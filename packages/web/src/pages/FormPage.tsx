@@ -148,7 +148,7 @@ export function FormPage({ resume, onChange }: Props) {
             {stepErrors.length > 0 && <ErrorSummary ref={summaryRef} errors={stepErrors} current={step} onGoToStep={fixInStep} />}
 
             <ErrorContext.Provider value={errorOf}>
-              {step === 'basic' && <BasicStep value={resume.personal} onChange={(personal) => onChange({ ...resume, personal })} />}
+              {step === 'basic' && <BasicStep value={resume} onChange={({ personal, layout }) => onChange({ ...resume, personal, layout })} />}
               {step === 'education' && <EducationStep value={resume.education} onChange={(education) => onChange({ ...resume, education })} />}
               {step === 'employment' && <EmploymentStep value={resume.employment} onChange={(employment) => onChange({ ...resume, employment })} />}
               {step === 'qualifications' && (

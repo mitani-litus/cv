@@ -36,6 +36,15 @@ describe('coerceDraft', () => {
     );
   });
 
+  it('写真欄・性別欄の設定と性別を読み込む。ない場合（以前のJSON）は既定値にする', () => {
+    const draft = coerceDraft({ layout: { photoBox: false, genderField: true }, personal: { gender: '女' } }, '2026-10-07');
+    expect(draft.layout).toEqual({ photoBox: false, genderField: true });
+    expect(draft.personal.gender).toBe('女');
+    const old = coerceDraft({ layout: { photoBox: 'no' }, personal: { name: '山田' } }, '2026-10-07');
+    expect(old.layout).toEqual({ photoBox: true, genderField: false });
+    expect(old.personal.gender).toBe('');
+  });
+
   it('行数の上限を超える分は捨てる', () => {
     const draft = coerceDraft({ qualifications: Array.from({ length: 100 }, () => ({ name: 'x' })) }, '2026-10-07');
     expect(draft.qualifications).toHaveLength(LIMITS.entries);
@@ -51,6 +60,8 @@ describe('hasInput', () => {
     const r = createEmptyResume('2026-10-07');
     expect(hasInput(r)).toBe(false);
     expect(hasInput({ ...r, motivation: 'a' })).toBe(true);
+    // 様式の選択だけでは、入力ありとみなさない
+    expect(hasInput({ ...r, layout: { photoBox: false, genderField: true } })).toBe(false);
   });
 });
 

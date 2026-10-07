@@ -309,3 +309,24 @@ export function DateField({ path, legend, value, onChange, support, suffix = '�
     </fieldset>
   );
 }
+
+/** チェックボックス（はい／いいえを選ぶ項目） */
+export function CheckboxField({ path, label, support, checked, onChange }: { path: string; label: string; support?: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  const id = fieldId(path);
+  const supportId = support ? `${id}-support` : undefined;
+  return (
+    <div className="app-check">
+      <input id={id} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-describedby={supportId} />
+      <div className="app-check__text">
+        <label className="bb-field__label" htmlFor={id}>
+          {label}
+        </label>
+        {support && (
+          <span className="bb-field__support" id={supportId}>
+            {support}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
