@@ -1,7 +1,7 @@
+import { renderResumePdf } from '@cv/pdf';
 import { validateResume, type FieldError } from '@cv/schema';
 import { loadFonts } from './fonts';
 import { log } from './log';
-import { renderResumePdf } from './pdf/render';
 
 /** API Gateway HTTP API（ペイロード 2.0）のイベントのうち、使う部分だけ */
 export interface HttpEvent {
@@ -104,7 +104,7 @@ export async function handler(event: HttpEvent): Promise<HttpResult> {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="resume.pdf"; filename*=UTF-8''${encodeURIComponent('履歴書.pdf')}`,
       },
-      body: pdf.toString('base64'),
+      body: Buffer.from(pdf).toString('base64'),
       isBase64Encoded: true,
     };
   } catch (e) {

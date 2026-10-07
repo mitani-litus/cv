@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { PdfRequestError } from './lib/api';
+import { createPdf } from './lib/pdf';
+
+// PDFの作成処理そのものは lib/pdf.test.ts と packages/pdf で確かめる
+vi.mock('./lib/pdf', () => ({ createPdf: vi.fn() }));
 
 function start(path = '/form') {
   window.history.pushState(null, '', path);
@@ -13,6 +18,18 @@ function start(path = '/form') {
 
 const next = () => screen.getByRole('button', { name: /^次へ/ });
 
+/** 次のステップへ進み、見出しにフォーカスが移るまで待つ（移る前に入力すると、入力の途中でフォーカスが外れる） */
+async function goNext(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(next());
+  await waitFor(() => expect(document.activeElement?.id).toBe('page-title'));
+}
+
+/** 行を追加し、追加した行の最初の入力欄にフォーカスが移るまで待つ */
+async function addEntry(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name }));
+  await waitFor(() => expect(document.activeElement?.tagName).toBe('INPUT'));
+}
+
 async function fillBasic(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^氏名/), '山田 太郎');
   await user.type(screen.getByLabelText(/^フリガナ/), 'やまだ たろう');
@@ -22,6 +39,7 @@ async function fillBasic(user: ReturnType<typeof userEvent.setup>) {
 }
 
 beforeEach(() => {
+  vi.mocked(createPdf).mockReset();
   window.scrollTo = vi.fn();
   Element.prototype.scrollIntoView = vi.fn();
   URL.createObjectURL = vi.fn(() => 'blob:test');
@@ -69,10 +87,10 @@ describe('入力フォーム', () => {
   it('学歴を追加・削除できる', async () => {
     const user = start();
     await fillBasic(user);
-    await user.click(next());
+    await goNext(user);
 
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await addEntry(user, '学歴を追加');
+    await addEntry(user, '学歴を追加');
     expect(screen.getByRole('heading', { name: '学歴 2' })).toBeTruthy();
 
     await user.type(screen.getByLabelText('学歴 1 の年（西暦）'), '２００１');
@@ -86,8 +104,8 @@ describe('入力フォーム', () => {
   it('学歴で「入学」を選ぶと、学校名を写した「卒業」の行が追加される', async () => {
     const user = start();
     await fillBasic(user);
-    await user.click(next());
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await goNext(user);
+    await addEntry(user, '学歴を追加');
     await user.type(screen.getByLabelText('学校名'), '○○高等学校');
     await user.selectOptions(screen.getByLabelText('区分'), '入学');
 
@@ -102,8 +120,8 @@ describe('入力フォーム', () => {
     const user = start();
     await fillBasic(user);
     await user.click(next());
-    await user.click(next());
-    await user.click(screen.getByRole('button', { name: '職歴を追加' }));
+    await goNext(user);
+    await addEntry(user, '職歴を追加');
     await user.type(screen.getByLabelText('会社名'), '株式会社○○');
     await user.selectOptions(screen.getByLabelText('区分'), '入社');
     expect((screen.getAllByLabelText('区分') as HTMLSelectElement[]).map((c) => c.value)).toEqual(['入社', '退職']);
@@ -118,37 +136,34 @@ describe('入力フォーム', () => {
   it('月だけ入力した行はエラーにする', async () => {
     const user = start();
     await fillBasic(user);
-    await user.click(next());
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await goNext(user);
+    await addEntry(user, '学歴を追加');
     await user.type(screen.getByLabelText('学歴 1 の月'), '4');
     await user.click(next());
     expect(within(screen.getByRole('alert')).getByText('月を入力した場合は、年も入力してください。')).toBeTruthy();
   });
 
   it('確認画面から「履歴書を作成する」でPDFを作成し、完了画面を表示する', async () => {
-    const fetchMock = vi.fn(async () => new Response('%PDF-1.7', { status: 200, headers: { 'Content-Type': 'application/pdf' } }));
-    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(createPdf).mockResolvedValue(new Blob(['%PDF-1.7'], { type: 'application/pdf' }));
     const user = start();
     await fillBasic(user);
     for (let i = 0; i < 5; i++) await user.click(next());
     expect(screen.getByRole('heading', { level: 1, name: '入力内容を確認してください' })).toBeTruthy();
     expect(screen.getByText('山田 太郎（ヤマダ タロウ）')).toBeTruthy();
+    // 既定の構成（PDFもブラウザで作る）では、送信しないことを説明する
+    expect(screen.getByText(/入力内容をサーバーへ送信することはありません/)).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: '履歴書を作成する' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: '履歴書を作成しました' })).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('/api/pdf');
-    expect(init.credentials).toBe('omit');
-    const sent = JSON.parse(init.body as string);
-    expect(sent.personal.phone).toBe('090-1234-5678');
+    expect(createPdf).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(createPdf).mock.calls[0]![0].personal.phone).toBe('090-1234-5678');
     expect(screen.getByRole('button', { name: 'PDFをダウンロード' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'CSVをダウンロード' })).toBeTruthy();
   });
 
   it('PDFの作成に失敗したら、入力内容を残したままエラーを表示する', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+    vi.mocked(createPdf).mockRejectedValue(new PdfRequestError('font'));
     const user = start();
     await fillBasic(user);
     for (let i = 0; i < 5; i++) await user.click(next());
@@ -156,6 +171,7 @@ describe('入力フォーム', () => {
 
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText('PDFを作成できませんでした')).toBeTruthy();
+    expect(within(alert).getByText(/フォントを読み込めませんでした/)).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: '入力内容を確認してください' })).toBeTruthy();
   });
 

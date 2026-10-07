@@ -12,6 +12,7 @@ import {
 import type { Resume } from '@cv/schema';
 import type { ReactNode } from 'react';
 import { DateField } from '../components/Field';
+import { PDF_IN_BROWSER } from '../config';
 import { Icon } from '../components/Icon';
 import type { StepId } from '../lib/steps';
 
@@ -129,7 +130,9 @@ export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
           作成するときの情報の扱い
         </h2>
         <p className="bb-banner__body">
-          PDFを作成するために、入力内容をサーバーへ送信します。作成が終わると、サーバーでは入力内容を保持しません。CSVとJSONは、この端末の中で作成します。
+          {PDF_IN_BROWSER
+            ? 'PDF・CSV・JSONは、すべてこの端末の中で作成します。入力内容をサーバーへ送信することはありません。'
+            : 'PDFを作成するために、入力内容をサーバーへ送信します。作成が終わると、サーバーでは入力内容を保持しません。CSVとJSONは、この端末の中で作成します。'}
         </p>
       </div>
     </div>

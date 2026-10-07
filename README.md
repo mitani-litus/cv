@@ -1,12 +1,13 @@
 # cv — 履歴書データ化
 
 履歴書をWebフォームで入力し、履歴書PDF・CSV・JSONを作成するオープンソースソフトウェアです。
-入力した履歴書情報は、原則としてサーバーに保存しません。
+**PDF・CSV・JSONはすべてブラウザの中で作成し、入力した履歴書情報をサーバーへ送信・保存しません。**
 
+- 公開URL：https://cv.code4hachioji.org/
 - 仕様書: [`docs/spec.md`](docs/spec.md)
 - 設計メモ: [`docs/design.md`](docs/design.md)
 
-> MVP（最小限の機能）の段階です。実際の AWS 環境へのデプロイでの動作確認は、これから行います。
+> MVP（最小限の機能）の段階です。
 
 ## できること
 
@@ -15,11 +16,50 @@
 - 入力途中のデータはJSONファイルとして保存し、後で続きから入力できる
 - 顔写真・性別欄は扱わない。アカウント登録は不要
 
+## 公開のしかた（2つの構成）
+
+| 構成 | PDFを作る場所 | 用途 |
+|---|---|---|
+| **GitHub Pages（既定）** | ブラウザ | 静的ファイルだけで動く。サーバーは不要で、入力内容は端末の外に出ない |
+| AWS（CloudFront + Lambda） | サーバー（Lambda） | サーバーでPDFを作る構成。下記「AWS へのデプロイ」 |
+
+どちらの構成でも、CSV・JSONの作成とPDFの取り込みはブラウザの中で行います。
+
+## GitHub Pages で公開する
+
+`main` に変更が入ると、GitHub Actions（`.github/workflows/pages.yml`）が画面をビルドして GitHub Pages に公開します。
+
+### 初回の設定
+
+1. **Settings → Pages → Build and deployment → Source** を「GitHub Actions」にする
+2. 同じ画面の **Custom domain** に `cv.code4hachioji.org` を入力して保存する
+3. DNS に CNAME レコードを追加する：`cv.code4hachioji.org` → `mitani-litus.github.io`
+4. DNS の確認が終わったら、**Enforce HTTPS** にチェックを入れる
+5. **Actions → Deploy to GitHub Pages → Run workflow** で公開する（以後は `main` への push で自動的に公開される）
+
+広告を表示する場合は、**Settings → Secrets and variables → Actions → Variables** に `CV_AD_URL`（広告ページのURL）を設定します。
+
+### 注意
+
+- PDFを作るときに、日本語フォント（約3MB）を一度だけ読み込みます。
+- GitHub Pages では HTTP ヘッダーを設定できないため、Content Security Policy は `<meta>` タグで設定しています。この方法では、ほかのサイトの画面への埋め込みを防ぐ設定（`frame-ancestors`）は使えません。
+
 ## ローカルで動かす
 
 AWS に接続しなくても、入力フォームからPDF・CSV・JSONの作成、PDFの取り込みまで確認できます。
 
-### Docker で動かす（本番と同じ Lambda イメージを使う）
+### Node.js だけで動かす（GitHub Pages と同じ構成）
+
+Node.js 22 以上が必要です。
+
+```sh
+npm install
+npm run dev       # http://localhost:5173 。PDFもブラウザの中で作る
+```
+
+### Docker で動かす（AWS 構成の確認用）
+
+PDFを Lambda で作る AWS 構成を、本番と同じ Lambda コンテナイメージで確認できます。
 
 ```sh
 docker compose up --build
@@ -33,15 +73,7 @@ http://localhost:5173 を開きます。PDF生成APIは、本番と同じ Lambda
 LAMBDA_BASE_IMAGE=amazon/aws-lambda-nodejs:22 docker compose up --build
 ```
 
-### Node.js だけで動かす
-
-Node.js 22 以上が必要です。
-
-```sh
-npm install
-npm run dev:api   # PDF生成API（http://localhost:9000）
-npm run dev       # 入力フォーム（http://localhost:5173）。/api は 9000 番に転送
-```
+Docker を使わずに AWS 構成を試す場合は、`npm run dev:api` を起動し、`VITE_PDF_API=/api/pdf` を設定して `npm run dev` を起動します。
 
 ### 開発用のコマンド
 
@@ -54,10 +86,13 @@ npm run build   # 本番用にビルド（packages/web/dist、packages/api/dist�
 |---|---|
 | `packages/schema` | 履歴書JSONのスキーマと入力チェック（ブラウザとAPIで共用） |
 | `packages/core` | CSV変換、表示用の整形、年齢計算（ブラウザで動作） |
+| `packages/pdf` | 履歴書PDFの作成（PDFKit）。ブラウザと Lambda の両方で使う。履歴書JSONをPDFに添付する |
 | `packages/web` | 入力フォーム、確認・完了画面、PDF取り込み画面（Vite + React） |
-| `packages/api` | PDF生成API（AWS Lambda、PDFKit）。履歴書JSONをPDFに添付する |
+| `packages/api` | PDF生成API（AWS Lambda）。AWS 構成のときだけ使う |
 
 ## AWS へのデプロイ
+
+サーバー（Lambda）でPDFを作る構成です。GitHub Pages で公開する場合は不要です。
 
 AWS CDK（`infra/`）で、次の構成を作成します。履歴書データを保存するデータベースやストレージは作りません。
 
@@ -78,14 +113,14 @@ CloudFront（HTTPS、セキュリティヘッダー、CSP）
 ```sh
 npm ci
 npm run cdk -w @cv/infra -- bootstrap   # 初回だけ（アカウントとリージョンごと）
-npm run deploy                   # 画面とAPIをビルドしてデプロイ
+npm run deploy                   # 画面（AWS 構成用）とAPIをビルドしてデプロイ
 ```
 
 完了すると `SiteUrl`（CloudFront のURL）が表示されます。リージョンの既定は東京（`ap-northeast-1`）です。
 
 ### 設定（任意）
 
-`cdk deploy` に `-c 名前=値` で渡します（例：`npm run build && npm run cdk -w @cv/infra -- deploy -c domainName=cv.example.jp -c certificateArn=...`）。
+`cdk deploy` に `-c 名前=値` で渡します（例：`npm run build:aws -w @cv/web && npm run build -w @cv/api && npm run cdk -w @cv/infra -- deploy -c domainName=cv.example.jp -c certificateArn=...`）。
 
 | 名前 | 内容 |
 |---|---|
@@ -107,9 +142,8 @@ npm run deploy                   # 画面とAPIをビルドしてデプロイ
 このサービスは「履歴書をデータ化するが、履歴書データを保有しない」ことを原則にしています。
 
 - 入力中のデータは、ブラウザのメモリの中だけに置きます。LocalStorage・Cookie・URL には保存しません。
-- CSV・JSON の作成と、PDF の取り込みは、ブラウザの中だけで行います。サーバーには送りません。
-- サーバーに履歴書データを送るのは、PDF を作成するときだけです。サーバーではメモリ上で PDF を作って返し、保存しません（データベースはありません）。
-- ログに個人情報は出力しません。エラーの応答にも入力値を含めません。
+- **GitHub Pages（既定）の構成では、PDF・CSV・JSONの作成とPDFの取り込みを、すべてブラウザの中で行います。入力内容をサーバーへ送信しません。** 通信するのは、画面のファイルとPDF用のフォントを読み込むときだけです。
+- AWS 構成では、PDF を作成するときだけ入力内容をサーバーへ送ります。サーバーではメモリ上で PDF を作って返し、保存しません（データベースはありません）。ログに個人情報は出力せず、エラーの応答にも入力値を含めません。
 - 入力内容を広告に利用することはありません。広告は別のオリジンのページを sandbox 付きの iframe で表示し、入力画面には表示しません。
 
 詳しくは [`docs/design.md`](docs/design.md) を参照してください。
@@ -122,12 +156,12 @@ npm run deploy                   # 画面とAPIをビルドしてデプロイ
 
 ### 主な対策
 
-- 通信はすべて HTTPS です（CloudFront で HTTP から HTTPS へリダイレクトし、HSTS を設定）。
-- Content Security Policy で、読み込めるスクリプトや通信先を自分のサイトだけに限っています。ほかのサイトの画面に埋め込むこともできません。
-- PDF 生成 API は、自分のサイトからの呼び出し（`Origin` を照合）だけを受け付け、CORS は設定していません。大量の呼び出しは、API Gateway のスロットリングで抑えます。
+- 通信はすべて HTTPS です（GitHub Pages の「Enforce HTTPS」、AWS 構成では CloudFront のリダイレクトと HSTS）。
+- Content Security Policy で、読み込めるスクリプトや通信先を自分のサイトだけに限っています（GitHub Pages では `<meta>` タグ、AWS 構成ではヘッダー）。AWS 構成では、ほかのサイトの画面に埋め込むこともできません。
+- AWS 構成の PDF 生成 API は、自分のサイトからの呼び出し（`Origin` を照合）だけを受け付け、CORS は設定していません。大量の呼び出しは、API Gateway のスロットリングで抑えます。
 - 入力チェックは、ブラウザと API の両方で同じ規則で行います。想定外の項目（画像データなど）は拒否します。
 - CSV では、Excel などで数式として扱われないよう、先頭が `=` `+` `-` `@` などの値を無害化します（CSV Injection 対策）。
-- Lambda の権限は、ログの書き込みだけです。
+- AWS 構成の Lambda の権限は、ログの書き込みだけです。
 
 既知の課題は [`docs/design.md`](docs/design.md) の「13. 残っている課題」にまとめています。
 
@@ -161,4 +195,4 @@ Issue・プルリクエスト・テストデータには、**実在する人の�
 
 [MIT License](LICENSE)
 
-画面のスタイル（`packages/web/src/styles/design-system.css`）は、デジタル庁デザインシステムの公式HTMLサンプル（MIT License, © 2023 デジタル庁）をもとにしています。フォントは Noto Sans JP（SIL Open Font License 1.1）を同梱しています（画面用は `@fontsource/noto-sans-jp`、PDF用は `@expo-google-fonts/noto-sans-jp`）。
+画面のスタイル（`packages/web/src/styles/design-system.css`）は、デジタル庁デザインシステムの公式HTMLサンプル（MIT License, © 2023 デジタル庁）をもとにしています。フォントは Noto Sans JP（SIL Open Font License 1.1）を同梱しています（画面用は `@fontsource/noto-sans-jp`、PDF用は `@expo-google-fonts/noto-sans-jp`。ブラウザでPDFを作るためのフォントは、ビルド時に `fonts/` に置き、ライセンス文 `OFL.txt` も同じ場所に置きます）。

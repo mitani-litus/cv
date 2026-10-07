@@ -6,10 +6,9 @@ import {
   LIMITS,
   type Resume,
 } from '@cv/schema';
+import { EMBEDDED_JSON_NAME, wrapText } from '@cv/pdf';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler, MAX_BODY_BYTES, type HttpEvent } from './handler';
-import { EMBEDDED_JSON_NAME } from './pdf/render';
-import { wrapText } from './pdf/text';
 
 const ORIGIN = 'https://cv.example.jp';
 const SECRET = 'SECRET-山田-12345';

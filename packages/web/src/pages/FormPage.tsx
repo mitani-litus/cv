@@ -6,7 +6,9 @@ import { Icon } from '../components/Icon';
 import { Page } from '../components/Layout';
 import { LocalNote } from '../components/LocalNote';
 import { Stepper } from '../components/Stepper';
-import { PdfRequestError, requestPdf } from '../lib/api';
+import { PDF_IN_BROWSER } from '../config';
+import { PdfRequestError } from '../lib/api';
+import { createPdf } from '../lib/pdf';
 import { hasInput } from '../lib/draft';
 import { downloadJson } from '../lib/files';
 import { errorsForStep, STEPS, type StepId } from '../lib/steps';
@@ -31,7 +33,10 @@ const LEADS: Record<StepId, string> = {
 const PDF_ERRORS: Record<PdfRequestError['kind'], string> = {
   invalid: '入力内容を確認できませんでした。各ステップの入力内容を確認してから、もう一度お試しください。',
   busy: '現在混み合っています。入力内容はこの画面に残っているので、少し待ってからもう一度「履歴書を作成する」を押してください。',
-  failed: '通信がうまくいかなかった可能性があります。入力内容はこの画面に残っているので、もう一度「履歴書を作成する」を押してください。',
+  failed: PDF_IN_BROWSER
+    ? 'PDFの作成中に問題が起きました。入力内容はこの画面に残っているので、もう一度「履歴書を作成する」を押してください。'
+    : '通信がうまくいかなかった可能性があります。入力内容はこの画面に残っているので、もう一度「履歴書を作成する」を押してください。',
+  font: 'PDFの作成に必要なフォントを読み込めませんでした。通信の状態を確認してから、もう一度「履歴書を作成する」を押してください。入力内容はこの画面に残っています。',
 };
 
 interface Props {
@@ -103,7 +108,7 @@ export function FormPage({ resume, onChange }: Props) {
     setGenerating(true);
     setPdfError(null);
     try {
-      setPdf(await requestPdf(validation.value));
+      setPdf(await createPdf(validation.value));
       window.scrollTo(0, 0);
     } catch (e) {
       setPdfError(PDF_ERRORS[e instanceof PdfRequestError ? e.kind : 'failed']);
@@ -186,7 +191,7 @@ export function FormPage({ resume, onChange }: Props) {
             </div>
             {generating && (
               <p className="app-muted" role="status" style={{ marginTop: 16, textAlign: 'right' }}>
-                数秒かかります。このままお待ちください。
+                {PDF_IN_BROWSER ? 'はじめて作成するときは、フォント（約3MB）を読み込むため少し時間がかかります。このままお待ちください。' : '数秒かかります。このままお待ちください。'}
               </p>
             )}
           </form>

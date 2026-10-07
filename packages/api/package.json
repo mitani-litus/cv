@@ -11,12 +11,11 @@
   },
   "dependencies": {
     "@cv/core": "*",
+    "@cv/pdf": "*",
     "@cv/schema": "*",
-    "@expo-google-fonts/noto-sans-jp": "^0.4.4",
-    "pdfkit": "^0.20.2"
+    "@expo-google-fonts/noto-sans-jp": "^0.4.4"
   },
   "devDependencies": {
-    "@types/pdfkit": "^0.17.6",
     "esbuild": "^0.28.2",
     "pdfjs-dist": "^6.4.299"
   }
