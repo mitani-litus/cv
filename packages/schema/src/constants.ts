@@ -1,5 +1,9 @@
-/** 履歴書JSONのバージョン。形式を変えたときに上げる。 */
-export const RESUME_VERSION = '1.0';
+/**
+ * 履歴書JSONのバージョン。形式を変えたときに上げる。
+ * 2.0: 氏名を姓・名に分け、学歴・職歴を「1件 = 1校・1社」（入学と卒業、入社と退職を1件に持つ）にした。
+ * 以前のバージョンのJSONは migrate.ts で変換して読み込む。
+ */
+export const RESUME_VERSION = '2.0';
 
 /**
  * PDFの様式の既定値。
@@ -10,15 +14,17 @@ export const DEFAULT_LAYOUT = { photoBox: true, genderField: false } as const;
 
 /** 文字数・件数の上限。APIでも同じ値でチェックする。 */
 export const LIMITS = {
-  name: 50,
-  nameKana: 100,
+  familyName: 50,
+  givenName: 50,
+  familyNameKana: 50,
+  givenNameKana: 50,
   city: 50,
   street: 100,
   building: 100,
   email: 254,
   phone: 20,
-  gender: 20,
   entryText: 100,
+  degree: 50,
   note: 200,
   motivation: 400,
   selfIntroduction: 400,
@@ -28,8 +34,11 @@ export const LIMITS = {
   yearMax: 2100,
 } as const;
 
-export const EDUCATION_CATEGORIES = ['入学', '卒業', '中途退学', '修了', 'その他'] as const;
-export const EMPLOYMENT_CATEGORIES = ['入社', '退職', 'その他'] as const;
+/** 学歴の区分（その学校をどう終えたか） */
+export const EDUCATION_STATUSES = ['卒業', '修了', '中退', '在学中', '卒業見込'] as const;
+
+/** 性別の選択肢（記載は任意。空欄も可） */
+export const GENDERS = ['男性', '女性', 'その他', '回答しない'] as const;
 
 export const PREFECTURES = [
   '北海道',

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
-import { createEmptyResume, type ResumeLayout } from '@cv/schema';
+import { createEmptyEducation, createEmptyEmployment, createEmptyResume, type Gender, type ResumeLayout } from '@cv/schema';
 import { describe, expect, it } from 'vitest';
 import { renderResumePdf } from './index';
 
@@ -10,7 +10,7 @@ const regular = new Uint8Array(readFileSync(join(fontDir, '400Regular/NotoSansJP
 
 function resume() {
   const r = createEmptyResume('2026-10-07');
-  r.personal = { ...r.personal, name: '山田 太郎', nameKana: 'ヤマダ タロウ', phone: '090-1234-5678', email: 'taro@example.jp' };
+  r.personal = { ...r.personal, familyName: '山田', givenName: '太郎', familyNameKana: 'ヤマダ', givenNameKana: 'タロウ', phone: '090-1234-5678', email: 'taro@example.jp' };
   return r;
 }
 
@@ -23,7 +23,7 @@ async function firstPageText(pdf: Uint8Array): Promise<string> {
   return content.items.map((item) => ('str' in item ? item.str : '')).join('');
 }
 
-async function render(layout: ResumeLayout, gender = '') {
+async function render(layout: ResumeLayout, gender: Gender | '' = '') {
   const r = resume();
   r.layout = layout;
   r.personal.gender = gender;
@@ -49,17 +49,30 @@ describe('renderResumePdf', () => {
     });
 
     it('性別欄は、設けるときだけ描き、記載が任意であることを添える', async () => {
-      const withGender = await render({ photoBox: true, genderField: true }, '女');
+      const withGender = await render({ photoBox: true, genderField: true }, '女性');
       expect(withGender).toContain('性別');
-      expect(withGender).toContain('女');
+      expect(withGender).toContain('女性');
       expect(withGender).toContain('記載は任意です');
-      const without = await render({ photoBox: true, genderField: false }, '女');
+      const without = await render({ photoBox: true, genderField: false }, '女性');
       expect(without).not.toContain('性別');
-      expect(without).not.toContain('女');
+      expect(without).not.toContain('女性');
     });
 
     it('性別欄を設けて空欄のままでも作成できる', async () => {
       expect(await render({ photoBox: false, genderField: true })).toContain('性別');
     });
+  });
+
+  it('氏名は姓と名を空白でつなぎ、学歴・職歴は1件を入学・卒業、入社・退職の行にする', async () => {
+    const r = resume();
+    r.education = [{ ...createEmptyEducation(), school: '工学院大学', start: { year: 2000, month: 4 }, end: { year: 2004, month: 3 }, status: '卒業' }];
+    r.employment = [{ ...createEmptyEmployment(), company: '株式会社○○', start: { year: 2006, month: 4 } }];
+    const text = await firstPageText(await renderResumePdf(r, { regular }));
+    expect(text).toContain('山田 太郎');
+    expect(text).toContain('ヤマダ タロウ');
+    expect(text).toContain('工学院大学 入学');
+    expect(text).toContain('工学院大学 卒業');
+    expect(text).toContain('株式会社○○ 入社');
+    expect(text).toContain('現在に至る');
   });
 });

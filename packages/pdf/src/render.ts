@@ -1,13 +1,15 @@
 import {
   calcAge,
   CURRENTLY_EMPLOYED_TEXT,
-  describeEducation,
-  describeEmployment,
   describeQualification,
+  educationLines,
+  employmentLines,
   formatAddress,
   formatDateJa,
+  formatName,
   isCurrentlyEmployed,
   outputGender,
+  type HistoryLine,
 } from '@cv/core';
 import type { Resume } from '@cv/schema';
 import { create as openFont } from 'fontkit';
@@ -229,8 +231,10 @@ function personalBlock(w: Writer, resume: Resume) {
   const rowW = withPhoto ? CONTENT_W - PHOTO_W - PHOTO_GAP : CONTENT_W;
   if (withPhoto) photoBox(w, MARGIN_X + CONTENT_W - PHOTO_W, w.y + NAME_BLOCK_H - PHOTO_H);
 
-  labeledRow(w, 'フリガナ', KANA_H, (x, width, top) => w.textInBand(p.nameKana, x, top, KANA_H, fitSize(w, p.nameKana, width, 9)), rowW);
-  labeledRow(w, '氏名', NAME_H, (x, width, top) => w.textInBand(p.name, x, top, NAME_H, fitSize(w, p.name, width, 20, 10)), rowW);
+  const nameKana = formatName(p.familyNameKana, p.givenNameKana);
+  const name = formatName(p.familyName, p.givenName);
+  labeledRow(w, 'フリガナ', KANA_H, (x, width, top) => w.textInBand(nameKana, x, top, KANA_H, fitSize(w, nameKana, width, 9)), rowW);
+  labeledRow(w, '氏名', NAME_H, (x, width, top) => w.textInBand(name, x, top, NAME_H, fitSize(w, name, width, 20, 10)), rowW);
   const age = calcAge(p.birthDate, resume.createdAt);
   const birth = p.birthDate === '' ? '' : `${formatDateJa(p.birthDate)}生${age === null ? '' : `（満${age}歳）`}`;
   const genderW = withGender ? GENDER_LABEL_W + GENDER_VALUE_W : 0;
@@ -386,10 +390,8 @@ function appendix(w: Writer, overflows: { title: string; lines?: GridLine[]; tex
   }
 }
 
-function entryLines<T extends { year: number | null; month: number | null }>(items: T[], describe: (item: T) => string): GridLine[] {
-  return items
-    .map((item) => ({ year: item.year === null ? '' : String(item.year), month: item.month === null ? '' : String(item.month), text: describe(item) }))
-    .filter((r) => r.year !== '' || r.month !== '' || r.text !== '');
+function toGridLine(line: HistoryLine): GridLine {
+  return { year: line.year === null ? '' : String(line.year), month: line.month === null ? '' : String(line.month), text: line.text };
 }
 
 function toBytes(doc: Doc): Promise<Uint8Array> {
@@ -446,8 +448,9 @@ export async function renderResumePdf(resume: Resume, fonts: PdfFonts, now = new
   personalBlock(w, resume);
   w.y += 16;
 
-  const education = entryLines(resume.education, describeEducation);
-  const employment = entryLines(resume.employment, describeEmployment);
+  // 学歴・職歴は1校・1社ごとに持っているので、入学・卒業、入社・退職の行に並べ直す
+  const education = resume.education.flatMap(educationLines).map(toGridLine);
+  const employment = resume.employment.flatMap(employmentLines).map(toGridLine);
   const none: GridLine = { year: '', month: '', text: 'なし', align: 'center' };
   const history = toGridLines(w, [
     { year: '', month: '', text: '学歴', align: 'center' },
@@ -463,7 +466,10 @@ export async function renderResumePdf(resume: Resume, fonts: PdfFonts, now = new
   w.newPage();
   gridTable(w, '学歴・職歴（続き）', history.slice(ROWS_PAGE1), ROWS_PAGE2);
   w.y += 14;
-  const qualifications = toGridLines(w, entryLines(resume.qualifications, describeQualification));
+  const qualifications = toGridLines(
+    w,
+    resume.qualifications.map((q) => toGridLine({ year: q.year, month: q.month, text: describeQualification(q) })).filter((l) => l.year !== '' || l.text !== ''),
+  );
   gridTable(w, '免許・資格', qualifications, ROWS_QUALIFICATION);
   w.y += 14;
 

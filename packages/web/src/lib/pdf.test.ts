@@ -9,7 +9,7 @@ const FONT = new Uint8Array([0, 1, 0, 0, 9, 9, 9]);
 
 function resume() {
   const r = createEmptyResume('2026-10-07');
-  r.personal.name = '山田 太郎';
+  r.personal.familyName = '山田';
   return r;
 }
 
@@ -38,7 +38,7 @@ describe('createPdf（ブラウザで作る：既定）', () => {
     expect(init.method ?? 'GET').toBe('GET');
     expect(init.body).toBeUndefined();
     // 展開したフォントで PDF を作る
-    expect(render).toHaveBeenCalledWith(expect.objectContaining({ personal: expect.objectContaining({ name: '山田 太郎' }) }), {
+    expect(render).toHaveBeenCalledWith(expect.objectContaining({ personal: expect.objectContaining({ familyName: '山田' }) }), {
       regular: FONT,
     });
   });
@@ -83,7 +83,7 @@ describe('createPdf（サーバーで作る：VITE_PDF_API を設定した構成
     expect(url).toBe('/api/pdf');
     expect(init.method).toBe('POST');
     expect(init.credentials).toBe('omit');
-    expect(JSON.parse(init.body as string).personal.name).toBe('山田 太郎');
+    expect(JSON.parse(init.body as string).personal.familyName).toBe('山田');
     expect(render).not.toHaveBeenCalled();
   });
 

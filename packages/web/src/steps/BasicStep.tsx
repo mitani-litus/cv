@@ -1,5 +1,5 @@
 import { toHalfWidthDigits } from '@cv/core';
-import { LIMITS, PREFECTURES, type Resume } from '@cv/schema';
+import { GENDERS, LIMITS, PREFECTURES, type Resume } from '@cv/schema';
 import { CheckboxField, DateField, SelectField, TextField } from '../components/Field';
 import { toKatakana } from '../lib/kana';
 
@@ -13,7 +13,7 @@ export function BasicStep({ value: { personal: value, layout }, onChange }: { va
     onChange({ layout, personal: { ...value, address: { ...value.address, [key]: v } } });
   const setLayout = <K extends keyof Layout>(key: K, v: Layout[K]) => {
     // 性別欄をやめたときは、入力した性別も消す（PDFやJSONに残さない）
-    const personal = key === 'genderField' && !v ? { ...value, gender: '' } : value;
+    const personal = key === 'genderField' && !v ? { ...value, gender: '' as const } : value;
     onChange({ personal, layout: { ...layout, [key]: v } });
   };
 
@@ -38,15 +38,28 @@ export function BasicStep({ value: { personal: value, layout }, onChange }: { va
       </fieldset>
 
       <div className="app-row">
-        <TextField path="personal.name" label="氏名" required autoComplete="name" maxLength={LIMITS.name} value={value.name} onChange={(v) => set('name', v)} />
+        <TextField path="personal.familyName" label="姓" required autoComplete="family-name" maxLength={LIMITS.familyName} value={value.familyName} onChange={(v) => set('familyName', v)} />
+        <TextField path="personal.givenName" label="名" required autoComplete="given-name" maxLength={LIMITS.givenName} value={value.givenName} onChange={(v) => set('givenName', v)} />
+      </div>
+      <div className="app-row">
         <TextField
-          path="personal.nameKana"
-          label="フリガナ"
+          path="personal.familyNameKana"
+          label="セイ（フリガナ）"
           required
           support="カタカナで入力してください（ひらがなは自動でカタカナにします）"
-          maxLength={LIMITS.nameKana}
-          value={value.nameKana}
-          onChange={(v) => set('nameKana', v)}
+          maxLength={LIMITS.familyNameKana}
+          value={value.familyNameKana}
+          onChange={(v) => set('familyNameKana', v)}
+          normalize={toKatakana}
+        />
+        <TextField
+          path="personal.givenNameKana"
+          label="メイ（フリガナ）"
+          required
+          support="カタカナで入力してください"
+          maxLength={LIMITS.givenNameKana}
+          value={value.givenNameKana}
+          onChange={(v) => set('givenNameKana', v)}
           normalize={toKatakana}
         />
       </div>
@@ -60,16 +73,15 @@ export function BasicStep({ value: { personal: value, layout }, onChange }: { va
       />
 
       {layout.genderField && (
-        <TextField
+        <SelectField
           path="personal.gender"
           label="性別"
           optional
-          support="自由に記載できます。空欄のままでも構いません。"
-          className="w-gender"
-          maxLength={LIMITS.gender}
+          support="選ばずに空欄のままでも構いません。"
+          placeholder="選ばない（空欄）"
+          options={GENDERS}
           value={value.gender}
           onChange={(v) => set('gender', v)}
-          normalize={(v) => v.trim()}
         />
       )}
 
@@ -100,8 +112,25 @@ export function BasicStep({ value: { personal: value, layout }, onChange }: { va
           />
           <TextField path="personal.address.city" label="市区町村" autoComplete="address-level2" maxLength={LIMITS.city} value={value.address.city} onChange={(v) => setAddress('city', v)} />
         </div>
-        <TextField path="personal.address.street" label="町名・番地" autoComplete="address-line1" maxLength={LIMITS.street} value={value.address.street} onChange={(v) => setAddress('street', v)} />
-        <TextField path="personal.address.building" label="建物名・部屋番号" autoComplete="address-line2" maxLength={LIMITS.building} value={value.address.building} onChange={(v) => setAddress('building', v)} />
+        <TextField
+          path="personal.address.street"
+          label="町名・番地"
+          support="町名から番地までを続けて入力してください（例：越野32-23）"
+          autoComplete="address-line1"
+          maxLength={LIMITS.street}
+          value={value.address.street}
+          onChange={(v) => setAddress('street', v)}
+        />
+        <TextField
+          path="personal.address.building"
+          label="建物名・部屋番号"
+          optional
+          support="例：○○マンション 101"
+          autoComplete="address-line2"
+          maxLength={LIMITS.building}
+          value={value.address.building}
+          onChange={(v) => setAddress('building', v)}
+        />
       </fieldset>
 
       <div className="app-row">

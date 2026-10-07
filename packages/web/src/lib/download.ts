@@ -18,6 +18,6 @@ export function downloadBlob(blob: Blob, filename: string): void {
  */
 export const FILE_NAMES = {
   pdf: 'resume.pdf',
-  csv: 'resume.csv',
+  csvZip: 'resume-csv.zip',
   json: 'resume.json',
 } as const;

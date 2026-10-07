@@ -8,47 +8,55 @@ import {
 } from '@cv/schema';
 import {
   calcAge,
-  CSV_HEADERS,
+  crc32,
+  createZip,
+  EDUCATION_CSV_HEADERS,
+  educationLines,
+  employmentLines,
   escapeCsvCell,
   formatAddress,
   formatDateJa,
-  formatYearMonth,
+  formatName,
+  formatYearMonthIso,
   formatYearMonthJa,
   isCurrentlyEmployed,
-  toCsv,
-  toCsvRow,
+  RESUME_CSV_HEADERS,
+  toCsvFiles,
+  toCsvZip,
+  toE164,
   toHalfWidthDigits,
+  toResumeRow,
+  WORK_CSV_HEADERS,
 } from './index';
 
+const ID = '0f8fad5b-d9cb-469f-a165-70867728950e';
+
 function sampleResume(): Resume {
-  const r = createEmptyResume('2026-10-07');
+  const r = createEmptyResume('2026-10-07', ID);
   r.personal = {
-    name: '山田 太郎',
-    nameKana: 'ヤマダ タロウ',
-    birthDate: '1985-04-01',
+    familyName: '箕谷',
+    givenName: '祐也',
+    familyNameKana: 'ミタニ',
+    givenNameKana: 'ユウヤ',
+    birthDate: '1981-10-03',
     gender: '',
-    postalCode: '100-0001',
-    address: { prefecture: '東京都', city: '千代田区', street: '千代田1-1', building: '○○ビル101' },
-    phone: '090-1234-5678',
-    email: 'taro@example.jp',
+    postalCode: '192-0361',
+    address: { prefecture: '東京都', city: '八王子市', street: '越野32-23', building: '○○マンション 101' },
+    phone: '03-4500-7765',
+    email: 'mitani@example.jp',
   };
   r.education = [
-    { ...createEmptyEducation(), year: 2001, month: 4, category: '入学', school: '○○高等学校', department: '普通科' },
-    { ...createEmptyEducation(), year: 2004, month: 3, category: '卒業', school: '○○高等学校', department: '普通科' },
+    { ...createEmptyEducation(), school: '工学院大学', department: '工学部情報工学科', degree: '学士', start: { year: 2000, month: 4 }, end: { year: 2004, month: 3 }, status: '卒業' },
+    { ...createEmptyEducation(), school: '工学院大学大学院', department: '電気電子工学専攻', degree: '修士', start: { year: 2004, month: 4 }, end: { year: 2006, month: 3 }, status: '修了' },
   ];
   r.employment = [
-    {
-      ...createEmptyEmployment(),
-      year: 2008,
-      month: 4,
-      category: '入社',
-      company: '株式会社○○',
-      department: '営業部',
-      position: '主任',
-      note: '法人営業を担当',
-    },
+    { ...createEmptyEmployment(), company: 'アロカシステムエンジニアリング株式会社', position: 'システムエンジニア', start: { year: 2006, month: 4 }, end: { year: 2009, month: 6 } },
+    { ...createEmptyEmployment(), company: '株式会社○○', department: '開発部', start: { year: 2009, month: 7 }, note: '設計を担当' },
   ];
-  r.qualifications = [{ ...createEmptyQualification(), year: 2004, month: 8, name: '普通自動車第一種運転免許 取得' }];
+  r.qualifications = [
+    { ...createEmptyQualification(), year: 2004, month: 8, name: '普通自動車第一種運転免許' },
+    { ...createEmptyQualification(), year: 2005, month: 1, name: '基本情報技術者', note: '合格' },
+  ];
   r.motivation = '1行目\r\n2行目';
   r.preferences = '貴社の規定に従います。';
   return r;
@@ -108,31 +116,93 @@ describe('calcAge', () => {
 
 describe('整形', () => {
   it('年月', () => {
-    expect(formatYearMonth(2015, 4)).toBe('2015/04');
-    expect(formatYearMonth(2015, null)).toBe('2015');
-    expect(formatYearMonth(null, null)).toBe('');
+    expect(formatYearMonthIso({ year: 2015, month: 4 })).toBe('2015-04');
+    expect(formatYearMonthIso({ year: 2015, month: null })).toBe('2015');
+    expect(formatYearMonthIso({ year: null, month: null })).toBe('');
     expect(formatYearMonthJa(2015, 4)).toBe('2015年4月');
     expect(formatYearMonthJa(2015, null)).toBe('2015年');
   });
 
-  it('日付', () => {
+  it('日付・氏名', () => {
     expect(formatDateJa('1985-04-01')).toBe('1985年4月1日');
     expect(formatDateJa('')).toBe('');
+    expect(formatName('箕谷', '祐也')).toBe('箕谷 祐也');
+    expect(formatName('箕谷', '')).toBe('箕谷');
   });
 
-  it('住所', () => {
-    expect(formatAddress({ prefecture: '東京都', city: '千代田区', street: '千代田1-1', building: '' })).toBe(
-      '東京都千代田区千代田1-1',
-    );
-    expect(formatAddress({ prefecture: '東京都', city: '千代田区', street: '千代田1-1', building: 'A棟' })).toBe(
-      '東京都千代田区千代田1-1　A棟',
-    );
+  it('住所（町名番地の後に建物名）', () => {
+    expect(formatAddress({ prefecture: '東京都', city: '八王子市', street: '越野32-23', building: '' })).toBe('東京都八王子市越野32-23');
+    expect(formatAddress({ prefecture: '東京都', city: '八王子市', street: '越野32-23', building: 'A棟' })).toBe('東京都八王子市越野32-23　A棟');
   });
 
   it('全角の数字とハイフンを半角にする', () => {
     expect(toHalfWidthDigits('０９０－１２３４ー５６７８')).toBe('090-1234-5678');
     expect(toHalfWidthDigits('〒１００−０００１')).toBe('〒100-0001');
     expect(toHalfWidthDigits('＋８１（３）')).toBe('+81(3)');
+  });
+});
+
+describe('toE164', () => {
+  it.each([
+    ['03-4500-7765', '+81345007765'],
+    ['0345007765', '+81345007765'],
+    ['090-1234-5678', '+819012345678'],
+    ['(03) 4500 7765', '+81345007765'],
+    ['+81345007765', '+81345007765'],
+    ['+81-3-4500-7765', '+81345007765'],
+    ['+1 (555) 010-0000', '+15550100000'],
+    ['', ''],
+  ])('%s → %s', (input, expected) => {
+    expect(toE164(input)).toBe(expected);
+  });
+});
+
+describe('学歴・職歴を履歴書の行にする', () => {
+  it('学歴は入学と卒業・修了の2行にする', () => {
+    const [university, graduate] = sampleResume().education;
+    expect(educationLines(university!)).toEqual([
+      { year: 2000, month: 4, text: '工学院大学 工学部情報工学科 学士 入学' },
+      { year: 2004, month: 3, text: '工学院大学 工学部情報工学科 学士 卒業' },
+    ]);
+    expect(educationLines(graduate!).map((l) => l.text)).toEqual(['工学院大学大学院 電気電子工学専攻 修士 入学', '工学院大学大学院 電気電子工学専攻 修士 修了']);
+  });
+
+  it('中退・卒業見込み・在学中', () => {
+    const e = { ...createEmptyEducation(), school: '○○大学', start: { year: 2024, month: 4 } };
+    expect(educationLines({ ...e, end: { year: 2025, month: 9 }, status: '中退' }).at(-1)?.text).toBe('○○大学 中途退学');
+    expect(educationLines({ ...e, end: { year: 2028, month: 3 }, status: '卒業見込' }).at(-1)?.text).toBe('○○大学 卒業見込み');
+    expect(educationLines({ ...e, status: '在学中' })).toEqual([
+      { year: 2024, month: 4, text: '○○大学 入学' },
+      { year: null, month: null, text: '○○大学 在学中' },
+    ]);
+  });
+
+  it('職歴は入社と退職の2行にし、業務内容は入社の行に添える', () => {
+    const [first, second] = sampleResume().employment;
+    expect(employmentLines(first!)).toEqual([
+      { year: 2006, month: 4, text: 'アロカシステムエンジニアリング株式会社 システムエンジニア 入社' },
+      { year: 2009, month: 6, text: 'アロカシステムエンジニアリング株式会社 退職' },
+    ]);
+    expect(employmentLines(second!)).toEqual([{ year: 2009, month: 7, text: '株式会社○○ 開発部 入社（設計を担当）' }]);
+  });
+
+  it('何も入力されていない件は行にしない', () => {
+    expect(educationLines(createEmptyEducation())).toEqual([]);
+    expect(employmentLines(createEmptyEmployment())).toEqual([]);
+  });
+});
+
+describe('isCurrentlyEmployed', () => {
+  const job = (end: number | null) => ({ ...createEmptyEmployment(), company: '株式会社○○', start: { year: 2008, month: 4 }, end: { year: end, month: null } });
+
+  it('最後の1件に入社があり退職がなければ在職中', () => {
+    expect(isCurrentlyEmployed([job(2010), job(null)])).toBe(true);
+    expect(isCurrentlyEmployed([job(null), createEmptyEmployment()])).toBe(true);
+  });
+
+  it('最後の1件が退職済み、または職歴がなければ在職中ではない', () => {
+    expect(isCurrentlyEmployed([job(null), job(2010)])).toBe(false);
+    expect(isCurrentlyEmployed([])).toBe(false);
   });
 });
 
@@ -165,130 +235,154 @@ describe('escapeCsvCell', () => {
   });
 });
 
-describe('toCsv', () => {
-  it('BOM付き・CRLF区切りで、ヘッダー行と1応募者1行を出力する', () => {
-    const csv = toCsv(sampleResume());
-    expect(csv.startsWith('﻿')).toBe(true);
-    expect(csv.endsWith('\r\n')).toBe(true);
-    const rows = parseCsv(csv);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toEqual(CSV_HEADERS);
+describe('toCsvFiles', () => {
+  function files(r: Resume | Resume[] = sampleResume()) {
+    return Object.fromEntries(toCsvFiles(r).map((f) => [f.name, f.content]));
+  }
+
+  function table(csv: string) {
+    const [headers, ...rows] = parseCsv(csv);
+    return rows.map((row) => Object.fromEntries(headers!.map((h, i) => [h, row[i]])));
+  }
+
+  it('resume.csv・education.csv・work.csv の3つを、BOM付き・CRLF区切りで出力する', () => {
+    const f = files();
+    expect(Object.keys(f)).toEqual(['resume.csv', 'education.csv', 'work.csv']);
+    for (const content of Object.values(f)) {
+      expect(content.startsWith('\uFEFF')).toBe(true);
+      expect(content.endsWith('\r\n')).toBe(true);
+    }
+    expect(parseCsv(f['resume.csv']!)[0]).toEqual(RESUME_CSV_HEADERS);
+    expect(parseCsv(f['education.csv']!)[0]).toEqual(EDUCATION_CSV_HEADERS);
+    expect(parseCsv(f['work.csv']!)[0]).toEqual(WORK_CSV_HEADERS);
   });
 
-  it('各列の値', () => {
-    const row = parseCsv(toCsv(sampleResume()))[1]!;
-    const byHeader = Object.fromEntries(CSV_HEADERS.map((h, i) => [h, row[i]]));
-    expect(byHeader).toEqual({
-      履歴書の日付: '2026-10-07',
-      氏名: '山田 太郎',
-      氏名フリガナ: 'ヤマダ タロウ',
-      生年月日: '1985-04-01',
-      年齢: '41',
-      性別: '',
-      郵便番号: '100-0001',
-      住所: '東京都千代田区千代田1-1　○○ビル101',
-      電話番号: '090-1234-5678',
-      メールアドレス: 'taro@example.jp',
-      学歴: '2001/04 ○○高等学校 普通科 入学\n2004/03 ○○高等学校 普通科 卒業',
-      職歴: '2008/04 株式会社○○ 営業部 主任 入社（法人営業を担当）',
-      '資格・免許': '2004/08 普通自動車第一種運転免許 取得',
-      志望動機: '1行目\n2行目',
-      自己PR: '',
-      本人希望: '貴社の規定に従います。',
-    });
+  it('resume.csv：1行 = 1人。氏名・住所は列を分け、年齢は出力しない', () => {
+    expect(table(files()['resume.csv']!)).toEqual([
+      {
+        応募者ID: ID,
+        履歴書の日付: '2026-10-07',
+        姓: '箕谷',
+        名: '祐也',
+        姓カナ: 'ミタニ',
+        名カナ: 'ユウヤ',
+        生年月日: '1981-10-03',
+        性別: '',
+        郵便番号: '192-0361',
+        都道府県: '東京都',
+        市区町村: '八王子市',
+        町名番地: '越野32-23',
+        建物名: '○○マンション 101',
+        電話番号: '+81345007765',
+        メールアドレス: 'mitani@example.jp',
+        '資格・免許': '普通自動車第一種運転免許;基本情報技術者',
+        志望動機: '1行目\n2行目',
+        自己PR: '',
+        本人希望: '貴社の規定に従います。',
+      },
+    ]);
+    expect(RESUME_CSV_HEADERS).not.toContain('年齢');
   });
 
-  it('件数が多くても1列にすべて入る（切り捨てない）', () => {
+  it('education.csv：1行 = 1校。入学と卒業・修了を1行に、年月は YYYY-MM', () => {
+    expect(table(files()['education.csv']!)).toEqual([
+      { 応募者ID: ID, 学校名: '工学院大学', 学部学科: '工学部情報工学科', '学位・課程': '学士', 入学: '2000-04', '卒業・修了': '2004-03', 区分: '卒業', 備考: '' },
+      { 応募者ID: ID, 学校名: '工学院大学大学院', 学部学科: '電気電子工学専攻', '学位・課程': '修士', 入学: '2004-04', '卒業・修了': '2006-03', 区分: '修了', 備考: '' },
+    ]);
+  });
+
+  it('work.csv：1行 = 1社。入社と退職を1行に、在職中は退職を空欄', () => {
+    expect(table(files()['work.csv']!)).toEqual([
+      { 応募者ID: ID, 会社名: 'アロカシステムエンジニアリング株式会社', 業種: '', 雇用形態: '', 部署: '', '役職・職種': 'システムエンジニア', 入社: '2006-04', 退職: '2009-06', 業務内容: '', 退職理由: '' },
+      { 応募者ID: ID, 会社名: '株式会社○○', 業種: '', 雇用形態: '', 部署: '開発部', '役職・職種': '', 入社: '2009-07', 退職: '', 業務内容: '設計を担当', 退職理由: '' },
+    ]);
+  });
+
+  it('学歴・職歴がなければ、ヘッダー行だけを出力する。空の件は出力しない', () => {
     const r = sampleResume();
-    r.education = Array.from({ length: 30 }, (_, i) => ({
-      ...createEmptyEducation(),
-      year: 1990 + i,
-      school: `学校${i + 1}`,
-    }));
-    const row = toCsvRow(r);
-    expect(row[CSV_HEADERS.indexOf('学歴')]!.split('\n')).toHaveLength(30);
+    r.education = [createEmptyEducation()];
+    r.employment = [];
+    expect(parseCsv(files(r)['education.csv']!)).toHaveLength(1);
+    expect(parseCsv(files(r)['work.csv']!)).toHaveLength(1);
   });
 
-  it('空の行は出力しない', () => {
+  it('性別は、性別欄を設けたときだけ出力する', () => {
     const r = sampleResume();
-    r.qualifications = [createEmptyQualification(), ...r.qualifications, createEmptyQualification()];
-    expect(toCsvRow(r)[CSV_HEADERS.indexOf('資格・免許')]).toBe('2004/08 普通自動車第一種運転免許 取得');
-  });
-
-  it('性別の列は年齢の後にある', () => {
-    expect(CSV_HEADERS.slice(3, 6)).toEqual(['生年月日', '年齢', '性別']);
-  });
-
-  it('性別は、性別欄を設ける様式のときだけ出力する', () => {
-    const r = sampleResume();
-    r.personal.gender = '女';
-    expect(toCsvRow(r)[CSV_HEADERS.indexOf('性別')]).toBe('');
+    r.personal.gender = '回答しない';
+    expect(toResumeRow(r)[RESUME_CSV_HEADERS.indexOf('性別')]).toBe('');
     r.layout = { ...r.layout, genderField: true };
-    expect(toCsvRow(r)[CSV_HEADERS.indexOf('性別')]).toBe('女');
-    r.personal.gender = '=1+1';
-    expect(parseCsv(toCsv(r))[1]![CSV_HEADERS.indexOf('性別')]).toBe("'=1+1");
+    expect(toResumeRow(r)[RESUME_CSV_HEADERS.indexOf('性別')]).toBe('回答しない');
   });
 
-  it('生年月日がなければ年齢は空', () => {
+  it('資格・免許の名称の中のセミコロンは全角にする', () => {
     const r = sampleResume();
-    r.personal.birthDate = '';
-    expect(toCsvRow(r)[CSV_HEADERS.indexOf('年齢')]).toBe('');
+    r.qualifications = [{ ...createEmptyQualification(), name: 'A;B' }, createEmptyQualification(), { ...createEmptyQualification(), name: 'C' }];
+    expect(toResumeRow(r)[RESUME_CSV_HEADERS.indexOf('資格・免許')]).toBe('A；B;C');
   });
 
-  it('どの列の数式も無害化される', () => {
+  it('どのファイルの数式も無害化される。電話番号の E.164 はそのまま', () => {
     const r = sampleResume();
-    r.personal.name = '=cmd|"/c calc"!A1';
+    r.personal.familyName = '=cmd|"/c calc"!A1';
     r.motivation = '+SUM(1,2)';
     r.education[0]!.school = '=1+1';
-    const row = parseCsv(toCsv(r))[1]!;
-    expect(row[CSV_HEADERS.indexOf('氏名')]).toBe(`'=cmd|"/c calc"!A1`);
-    expect(row[CSV_HEADERS.indexOf('志望動機')]).toBe("'+SUM(1,2)");
-    // 学歴は年月で始まるため数式にならない
-    expect(row[CSV_HEADERS.indexOf('学歴')]!.startsWith('2001/04 =1+1')).toBe(true);
+    r.employment[0]!.note = '@SUM(A1)';
+    const f = files(r);
+    expect(table(f['resume.csv']!)[0]).toMatchObject({ 姓: `'=cmd|"/c calc"!A1`, 志望動機: "'+SUM(1,2)", 電話番号: '+81345007765' });
+    expect(table(f['education.csv']!)[0]!['学校名']).toBe("'=1+1");
+    expect(table(f['work.csv']!)[0]!['業務内容']).toBe("'@SUM(A1)");
   });
 
-  it('電話番号の列では + で始まる国際形式をそのまま出力する', () => {
-    const r = sampleResume();
-    r.personal.phone = '+81-90-1234-5678';
-    const row = parseCsv(toCsv(r))[1]!;
-    expect(row[CSV_HEADERS.indexOf('電話番号')]).toBe('+81-90-1234-5678');
-  });
-
-  it('電話番号の列でも、電話番号の形でない値は無害化する', () => {
-    expect(escapeCsvCell('+81(3)1234-5678', { allowLeadingPlus: true })).toBe('+81(3)1234-5678');
-    expect(escapeCsvCell('+SUM(1,2)', { allowLeadingPlus: true })).toBe(`"'+SUM(1,2)"`);
-    expect(escapeCsvCell('=1+1', { allowLeadingPlus: true })).toBe("'=1+1");
-    expect(escapeCsvCell('-1', { allowLeadingPlus: true })).toBe("'-1");
-  });
-
-  it('電話番号以外の列では + で始まる値を無害化する', () => {
-    const r = sampleResume();
-    r.personal.postalCode = '+81';
-    r.preferences = '+81-90-1234-5678';
-    const row = parseCsv(toCsv(r))[1]!;
-    expect(row[CSV_HEADERS.indexOf('郵便番号')]).toBe("'+81");
-    expect(row[CSV_HEADERS.indexOf('本人希望')]).toBe("'+81-90-1234-5678");
-  });
-
-  it('複数の履歴書を1ファイルにできる', () => {
-    expect(parseCsv(toCsv([sampleResume(), sampleResume()]))).toHaveLength(3);
+  it('複数人分をまとめると、各ファイルの行が応募者IDで紐づく', () => {
+    const other = sampleResume();
+    other.id = '9b2f6e1a-3c4d-4e5f-8a7b-1c2d3e4f5a6b';
+    other.employment = [];
+    const f = files([sampleResume(), other]);
+    expect(table(f['resume.csv']!).map((row) => row['応募者ID'])).toEqual([ID, other.id]);
+    expect(table(f['education.csv']!).map((row) => row['応募者ID'])).toEqual([ID, ID, other.id, other.id]);
+    expect(table(f['work.csv']!).map((row) => row['応募者ID'])).toEqual([ID, ID]);
   });
 });
 
-describe('isCurrentlyEmployed', () => {
-  const job = (category: '入社' | '退職' | '', company = '株式会社○○') => ({ ...createEmptyEmployment(), year: 2008, category, company });
+/** ZIP（格納方式）からファイルを取り出す（テスト用。セントラルディレクトリを読む） */
+function unzip(zip: Uint8Array): Map<string, Uint8Array> {
+  const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+  const end = zip.length - 22;
+  expect(view.getUint32(end, true)).toBe(0x06054b50);
+  const count = view.getUint16(end + 10, true);
+  let p = view.getUint32(end + 16, true);
+  const files = new Map<string, Uint8Array>();
+  for (let i = 0; i < count; i++) {
+    expect(view.getUint32(p, true)).toBe(0x02014b50);
+    const crc = view.getUint32(p + 16, true);
+    const size = view.getUint32(p + 20, true);
+    const nameLength = view.getUint16(p + 28, true);
+    const offset = view.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(zip.subarray(p + 46, p + 46 + nameLength));
+    const dataStart = offset + 30 + view.getUint16(offset + 26, true) + view.getUint16(offset + 28, true);
+    const data = zip.subarray(dataStart, dataStart + size);
+    expect(crc32(data)).toBe(crc);
+    files.set(name, data);
+    p += 46 + nameLength;
+  }
+  return files;
+}
 
-  it('最後の行が入社なら在職中', () => {
-    expect(isCurrentlyEmployed([job('入社')])).toBe(true);
-    expect(isCurrentlyEmployed([job('入社'), job('退職'), job('入社', '株式会社△△')])).toBe(true);
+describe('ZIP', () => {
+  it('crc32', () => {
+    expect(crc32(new TextEncoder().encode('123456789'))).toBe(0xcbf43926);
   });
 
-  it('最後の行が退職、または職歴がなければ在職中ではない', () => {
-    expect(isCurrentlyEmployed([job('入社'), job('退職')])).toBe(false);
-    expect(isCurrentlyEmployed([])).toBe(false);
+  it('3つのCSVを1つのZIPにまとめる', () => {
+    const files = unzip(toCsvZip(sampleResume(), new Date(2026, 9, 7, 12, 0, 0)));
+    expect([...files.keys()]).toEqual(['resume.csv', 'education.csv', 'work.csv']);
+    const expected = toCsvFiles(sampleResume());
+    for (const f of expected) expect(new TextDecoder().decode(files.get(f.name))).toBe(f.content.replace(/^\uFEFF/, ''));
+    // BOM も含めて保存されている
+    expect([...files.get('resume.csv')!.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
   });
 
-  it('空の行は無視する', () => {
-    expect(isCurrentlyEmployed([job('入社'), createEmptyEmployment()])).toBe(true);
+  it('日本語のファイル名も UTF-8 で記録する', () => {
+    const files = unzip(createZip([{ name: '履歴書.csv', data: new Uint8Array([1, 2, 3]) }]));
+    expect([...files.get('履歴書.csv')!]).toEqual([1, 2, 3]);
   });
 });

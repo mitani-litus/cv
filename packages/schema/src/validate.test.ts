@@ -13,8 +13,10 @@ import {
 function validResume(): Resume {
   const r = createEmptyResume('2026-10-07');
   r.personal = {
-    name: '山田 太郎',
-    nameKana: 'ヤマダ タロウ',
+    familyName: '山田',
+    givenName: '太郎',
+    familyNameKana: 'ヤマダ',
+    givenNameKana: 'タロウ',
     birthDate: '1985-04-01',
     gender: '',
     postalCode: '100-0001',
@@ -23,12 +25,9 @@ function validResume(): Resume {
     email: 'taro@example.jp',
   };
   r.education = [
-    { ...createEmptyEducation(), year: 2001, month: 4, category: '入学', school: '○○高等学校' },
-    { ...createEmptyEducation(), year: 2004, month: 3, category: '卒業', school: '○○高等学校' },
+    { ...createEmptyEducation(), school: '○○高等学校', start: { year: 2001, month: 4 }, end: { year: 2004, month: 3 }, status: '卒業' },
   ];
-  r.employment = [
-    { ...createEmptyEmployment(), year: 2008, month: 4, category: '入社', company: '株式会社○○', department: '営業部' },
-  ];
+  r.employment = [{ ...createEmptyEmployment(), company: '株式会社○○', department: '営業部', start: { year: 2008, month: 4 } }];
   r.qualifications = [{ ...createEmptyQualification(), year: 2004, month: 8, name: '普通自動車第一種運転免許 取得' }];
   r.motivation = '貴社の○○事業に関心があり、\n志望いたしました。';
   r.preferences = '貴社の規定に従います。';
@@ -53,35 +52,42 @@ describe('validateResume', () => {
 
   it('必須項目以外が空でも受け付ける', () => {
     const r = createEmptyResume('2026-10-07');
-    r.personal.name = '山田 太郎';
-    r.personal.nameKana = 'ヤマダ タロウ';
+    r.personal = { ...r.personal, familyName: '山田', givenName: '太郎', familyNameKana: 'ヤマダ', givenNameKana: 'タロウ' };
     r.personal.phone = '0312345678';
     r.personal.email = 'taro@example.jp';
     expect(validateResume(r).ok).toBe(true);
   });
 
   describe('必須チェック', () => {
-    it('氏名・フリガナ・電話番号・メールアドレスが空ならエラー', () => {
+    it('姓・名・フリガナ・電話番号・メールアドレスが空ならエラー', () => {
       const r = createEmptyResume('2026-10-07');
       expect(errorPaths(r)).toEqual(
-        expect.arrayContaining(['personal.name', 'personal.nameKana', 'personal.phone', 'personal.email']),
+        expect.arrayContaining([
+          'personal.familyName',
+          'personal.givenName',
+          'personal.familyNameKana',
+          'personal.givenNameKana',
+          'personal.phone',
+          'personal.email',
+        ]),
       );
-      expect(messageFor(r, 'personal.name')).toBe('氏名を入力してください。');
+      expect(messageFor(r, 'personal.familyName')).toBe('姓を入力してください。');
+      expect(messageFor(r, 'personal.givenNameKana')).toBe('名のフリガナを入力してください。');
     });
 
-    it('空白だけの氏名はエラー', () => {
+    it('空白だけの姓はエラー', () => {
       const r = validResume();
-      r.personal.name = '　 ';
-      expect(errorPaths(r)).toContain('personal.name');
+      r.personal.familyName = '　 ';
+      expect(errorPaths(r)).toContain('personal.familyName');
     });
 
     it('1項目につきエラーは1件だけ返す', () => {
       const r = validResume();
-      r.personal.nameKana = '';
+      r.personal.familyNameKana = '';
       const result = validateResume(r);
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.errors.filter((e) => e.path === 'personal.nameKana')).toHaveLength(1);
+        expect(result.errors.filter((e) => e.path === 'personal.familyNameKana')).toHaveLength(1);
       }
     });
   });
@@ -98,10 +104,10 @@ describe('validateResume', () => {
 
     it('フリガナはカタカナのみ', () => {
       const r = validResume();
-      r.personal.nameKana = 'やまだ たろう';
-      expect(messageFor(r, 'personal.nameKana')).toContain('カタカナ');
-      r.personal.nameKana = 'ヤマダ　タロウ';
-      expect(errorPaths(r)).not.toContain('personal.nameKana');
+      r.personal.familyNameKana = 'やまだ';
+      expect(messageFor(r, 'personal.familyNameKana')).toContain('カタカナ');
+      r.personal.familyNameKana = 'ヤマダ';
+      expect(errorPaths(r)).not.toContain('personal.familyNameKana');
     });
 
     it.each(['100-0001', '1000001'])('郵便番号 %s を受け付ける', (postalCode) => {
@@ -151,8 +157,20 @@ describe('validateResume', () => {
 
     it('年月の範囲をチェックする', () => {
       const r = validResume();
-      r.education[0] = { ...r.education[0]!, year: 1899, month: 13 };
-      expect(errorPaths(r)).toEqual(expect.arrayContaining(['education.0.year', 'education.0.month']));
+      r.education[0] = { ...r.education[0]!, start: { year: 1899, month: 13 } };
+      expect(errorPaths(r)).toEqual(expect.arrayContaining(['education.0.start.year', 'education.0.start.month']));
+    });
+
+    it('学歴・職歴の終わりの年月が始まりより前ならエラー', () => {
+      const r = validResume();
+      r.education[0] = { ...r.education[0]!, start: { year: 2004, month: 4 }, end: { year: 2004, month: 3 } };
+      r.employment[0] = { ...r.employment[0]!, start: { year: 2010, month: null }, end: { year: 2009, month: 12 } };
+      expect(messageFor(r, 'education.0.end.year')).toBe('卒業・修了の年月が、入学より前になっています。');
+      expect(messageFor(r, 'employment.0.end.year')).toBe('退職の年月が、入社より前になっています。');
+      // 同じ年月や、どちらかが空欄ならよい
+      r.education[0] = { ...r.education[0]!, end: { year: 2004, month: 4 } };
+      r.employment[0] = { ...r.employment[0]!, start: { year: null, month: null } };
+      expect(validateResume(r).ok).toBe(true);
     });
 
     it('月だけ入力した行はエラー', () => {
@@ -167,10 +185,34 @@ describe('validateResume', () => {
       expect(validateResume(r).ok).toBe(true);
     });
 
-    it('区分は選択肢以外を拒否する', () => {
-      const r = validResume() as unknown as { employment: { category: string }[] };
-      r.employment[0]!.category = '入学';
-      expect(errorPaths(r)).toContain('employment.0.category');
+    it('学歴の区分は選択肢以外を拒否する', () => {
+      const r = validResume() as unknown as { education: { status: string }[] };
+      r.education[0]!.status = '入学';
+      expect(errorPaths(r)).toContain('education.0.status');
+    });
+
+    it('職歴で退職の年月が空なら在職中として受け付ける', () => {
+      const r = validResume();
+      expect(r.employment[0]!.end).toEqual({ year: null, month: null });
+      expect(validateResume(r).ok).toBe(true);
+    });
+
+    it.each(['男性', '女性', 'その他', '回答しない', ''])('性別 %s を受け付ける', (gender) => {
+      const r = validResume() as unknown as { personal: { gender: string } };
+      r.personal.gender = gender;
+      expect(validateResume(r).ok).toBe(true);
+    });
+
+    it.each(['男', 'あ', 'male'])('性別 %s（選択肢以外）はエラー', (gender) => {
+      const r = validResume() as unknown as { personal: { gender: string } };
+      r.personal.gender = gender;
+      expect(messageFor(r, 'personal.gender')).toBe('性別を選択肢から選んでください。');
+    });
+
+    it('応募者IDは UUID の形だけを受け付ける', () => {
+      const r = validResume();
+      r.id = 'A001';
+      expect(errorPaths(r)).toContain('id');
     });
 
     it('都道府県は選択肢以外を拒否する', () => {
@@ -200,27 +242,8 @@ describe('validateResume', () => {
     it('写真欄・性別欄の設定と性別を受け付ける', () => {
       const r = validResume();
       r.layout = { photoBox: false, genderField: true };
-      r.personal.gender = '女';
+      r.personal.gender = '女性';
       expect(validateResume(r).ok).toBe(true);
-    });
-
-    it('写真欄・性別欄の設定と性別がない、以前の形式も受け付け、既定値にする', () => {
-      const r = validResume() as unknown as Record<string, unknown> & { personal: Record<string, unknown> };
-      delete r.layout;
-      delete r.personal.gender;
-      const result = validateResume(r);
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      expect(result.value.layout).toEqual({ photoBox: true, genderField: false });
-      expect(result.value.personal.gender).toBe('');
-    });
-
-    it('性別の文字数の上限と改行をチェックする', () => {
-      const r = validResume();
-      r.personal.gender = 'あ'.repeat(LIMITS.gender + 1);
-      expect(errorPaths(r)).toContain('personal.gender');
-      r.personal.gender = '女\n性';
-      expect(errorPaths(r)).toContain('personal.gender');
     });
 
     it('様式の設定は真偽値だけを受け付け、想定外の項目を拒否する', () => {
@@ -236,8 +259,8 @@ describe('validateResume', () => {
   describe('制御文字', () => {
     it('1行入力の改行を拒否する', () => {
       const r = validResume();
-      r.personal.name = '山田\n太郎';
-      expect(errorPaths(r)).toContain('personal.name');
+      r.personal.givenName = '太\n郎';
+      expect(errorPaths(r)).toContain('personal.givenName');
     });
 
     it('複数行入力の改行は受け付け、それ以外の制御文字は拒否する', () => {
@@ -259,9 +282,9 @@ describe('validateResume', () => {
     });
 
     it('型が違う値を拒否する', () => {
-      const r = validResume() as unknown as { education: { year: unknown }[] };
-      r.education[0]!.year = '2001';
-      expect(errorPaths(r)).toContain('education.0.year');
+      const r = validResume() as unknown as { education: { start: { year: unknown } }[] };
+      r.education[0]!.start.year = '2001';
+      expect(errorPaths(r)).toContain('education.0.start.year');
     });
 
     it.each([null, undefined, 'string', 42, []])('オブジェクト以外（%s）を拒否する', (input) => {
@@ -269,7 +292,7 @@ describe('validateResume', () => {
     });
 
     it('対応していない version を拒否する', () => {
-      expect(errorPaths({ ...validResume(), version: '2.0' })).toContain('version');
+      expect(errorPaths({ ...validResume(), version: '3.0' })).toContain('version');
     });
   });
 
@@ -283,15 +306,16 @@ describe('validateResume', () => {
         unknownKey: secret,
         personal: {
           ...validResume().personal,
-          name: secret + '\n',
-          nameKana: secret,
+          familyName: secret + '\n',
+          givenNameKana: secret,
+          gender: secret,
           birthDate: secret,
           postalCode: secret,
           phone: secret,
           email: secret,
           address: { prefecture: secret, city: 123, street: secret, building: secret },
         },
-        education: [{ year: secret, month: secret, category: secret, school: 1, department: secret, note: secret }],
+        education: [{ start: { year: secret, month: secret }, end: secret, status: secret, school: 1, department: secret, degree: secret, note: secret }],
       };
       const result = validateResume(r);
       expect(result.ok).toBe(false);
@@ -315,7 +339,21 @@ describe('isValidIsoDate', () => {
 describe('createEmptyResume', () => {
   it('空の履歴書は必須項目のエラーだけになる', () => {
     expect(errorPaths(createEmptyResume('2026-10-07')).sort()).toEqual(
-      ['personal.email', 'personal.name', 'personal.nameKana', 'personal.phone'].sort(),
+      [
+        'personal.email',
+        'personal.familyName',
+        'personal.familyNameKana',
+        'personal.givenName',
+        'personal.givenNameKana',
+        'personal.phone',
+      ].sort(),
     );
+  });
+
+  it('応募者IDは毎回ちがう UUID になる', () => {
+    const a = createEmptyResume('2026-10-07').id;
+    const b = createEmptyResume('2026-10-07').id;
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(a).not.toBe(b);
   });
 });

@@ -1,9 +1,9 @@
-import type { EducationEntry, EmploymentEntry, QualificationEntry, Resume } from '@cv/schema';
+import type { QualificationEntry, Resume, YearMonthValue } from '@cv/schema';
 
-/** 年月を "2015/04" の形にする。年がなければ空文字、月がなければ "2015" */
-export function formatYearMonth(year: number | null, month: number | null): string {
-  if (year === null) return '';
-  return month === null ? String(year) : `${year}/${String(month).padStart(2, '0')}`;
+/** 年月を ISO 8601 の形（"2015-04"）にする。年がなければ空文字、月がなければ "2015"（CSV用） */
+export function formatYearMonthIso(ym: Pick<YearMonthValue, 'year' | 'month'>): string {
+  if (ym.year === null) return '';
+  return ym.month === null ? String(ym.year) : `${ym.year}-${String(ym.month).padStart(2, '0')}`;
 }
 
 /** 年月を "2015年4月" の形にする（画面・PDF用） */
@@ -19,12 +19,17 @@ export function formatDateJa(isoDate: string): string {
   return `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日`;
 }
 
-/** 出力する性別。性別欄を設けない様式では、入力があっても出力しない */
-export function outputGender(resume: Pick<Resume, 'layout' | 'personal'>): string {
-  return resume.layout.genderField ? resume.personal.gender.trim() : '';
+/** 氏名（姓と名を空白でつなぐ）。例: "山田 太郎" */
+export function formatName(familyName: string, givenName: string): string {
+  return joinWords([familyName, givenName]);
 }
 
-/** 住所を1行にまとめる（建物名の前だけ全角スペースで区切る） */
+/** 出力する性別。性別欄を設けない様式では、入力があっても出力しない */
+export function outputGender(resume: Pick<Resume, 'layout' | 'personal'>): string {
+  return resume.layout.genderField ? resume.personal.gender : '';
+}
+
+/** 住所を1行にまとめる（建物名の前だけ全角スペースで区切る）（画面・PDF用） */
 export function formatAddress(address: Resume['personal']['address']): string {
   const main = `${address.prefecture}${address.city}${address.street}`;
   return address.building === '' ? main : `${main}　${address.building}`;
@@ -34,27 +39,9 @@ function joinWords(words: string[]): string {
   return words.map((w) => w.trim()).filter((w) => w !== '').join(' ');
 }
 
-function withNote(text: string, note: string): string {
-  const n = note.trim();
-  return n === '' ? text : `${text}（${n}）`;
-}
-
-/** 学歴1件の本文（年月を除く）。例: "○○高等学校 普通科 卒業" */
-export function describeEducation(e: EducationEntry): string {
-  return withNote(joinWords([e.school, e.department, e.category]), e.note);
-}
-
-/** 職歴1件の本文（年月を除く）。例: "株式会社○○ 営業部 主任 入社" */
-export function describeEmployment(e: EmploymentEntry): string {
-  return withNote(joinWords([e.company, e.department, e.position, e.category]), e.note);
-}
-
 /** 資格・免許1件の本文（年月を除く） */
 export function describeQualification(q: QualificationEntry): string {
-  return withNote(joinWords([q.name]), q.note);
-}
-
-/** 年月と本文をつないだ1行。例: "2015/04 ○○高等学校 入学"。年月も本文もなければ空文字 */
-export function entryLine(year: number | null, month: number | null, text: string): string {
-  return joinWords([formatYearMonth(year, month), text]);
+  const name = q.name.trim();
+  const note = q.note.trim();
+  return note === '' ? name : `${name}（${note}）`;
 }
