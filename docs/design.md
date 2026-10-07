@@ -11,8 +11,9 @@
 | PDFのみ届いた場合 | 採用担当者がこのシステムの取り込み画面にPDFを読み込ませてCSVを得る（下記「4. PDF取り込み」） |
 | 広告 | 別オリジンのページを `<iframe sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox">` で表示する（`allow-same-origin` は付けない）。トップページだけに表示し、入力画面には表示しない。広告のURL（`VITE_AD_URL`）を設定しなければ広告枠は出さない |
 | JSON・CSVの生成 | ブラウザ内で生成する。サーバーには送らない |
-| PDFの生成 | サーバー（Lambda）で生成する。サーバーに履歴書データを送るのはこの処理だけ |
-| 公開APIの悪用対策 | Lambdaで `Origin` ヘッダーを照合する。API Gatewayのスロットリング、リクエストサイズ（64KB）と行数（各30件）の上限も設ける |
+| PDFの生成 | **既定ではブラウザ内で生成する**（GitHub Pages で公開するため。仕様書7.4「サーバーサイドで実施」から変更）。サーバー（Lambda）で生成する AWS 構成も残し、ビルド時の設定（`VITE_PDF_API`）で選べる |
+| 公開する場所 | 既定は GitHub Pages（https://cv.code4hachioji.org/ ）。AWS 構成（CloudFront + Lambda、仕様書第10章）も `infra/` で引き続きデプロイできる |
+| 公開APIの悪用対策（AWS 構成） | Lambdaで `Origin` ヘッダーを照合する。API Gatewayのスロットリング、リクエストサイズ（64KB）と行数（各30件）の上限も設ける |
 | 職歴の部署・役職 | `department` と `position` の2項目に分ける（JSONに合わせる） |
 | 年齢 | 入力項目にしない。「履歴書の日付」を基準に自動計算してPDF・CSVに出力する |
 | 履歴書の日付 | `createdAt`（○年○月○日現在）を追加する。初期値は当日で、確認画面で変更できる |
@@ -70,9 +71,10 @@ cv/
 ├── packages/
 │   ├── schema/      # 履歴書JSONのスキーマ（zod）と入力チェック。ブラウザとAPIで共用
 │   ├── core/        # JSON→CSV変換、エスケープ、年齢計算、表示用の整形（ブラウザで動作）
+│   ├── pdf/         # 履歴書PDFの作成（PDFKit）。ブラウザと Lambda の両方で使う
 │   ├── web/         # フォーム画面とPDF取り込み画面（Vite + React + TypeScript）
-│   └── api/         # Lambdaの処理: POST /api/pdf（PDF生成のみ）とローカル用のゲートウェイ
-├── infra/           # AWS CDK（TypeScript）
+│   └── api/         # Lambdaの処理: POST /api/pdf（AWS 構成のみ）とローカル用のゲートウェイ
+├── infra/           # AWS CDK（TypeScript。AWS 構成のみ）
 ├── docker/          # Lambdaのコンテナイメージ定義
 ├── docker-compose.yml
 ├── README.md / LICENSE (MIT)
@@ -88,13 +90,16 @@ cv/
 | 言語 | TypeScript（フロントもAPIも） |
 | フロント | Vite + React |
 | 入力チェック | zod（ブラウザとLambdaで共用） |
-| PDF生成 | PDFKit（フォントのサブセット埋め込み、JSON添付） |
+| PDF生成 | PDFKit（フォントのサブセット埋め込み、JSON添付）。ブラウザ版と Node.js 版の両方で同じコード（`packages/pdf`）を使う |
 | PDF読み取り | pdf.js（ブラウザ。取り込み画面を開いたときだけ読み込む） |
 | フォント | Noto Sans JP（SIL Open Font License 1.1）。画面用は `@fontsource/noto-sans-jp`、PDF用は `@expo-google-fonts/noto-sans-jp` を同梱し、外部のフォント配信サービスには接続しない |
+| 公開 | GitHub Pages（GitHub Actions でビルドして公開）。AWS 構成は AWS CDK |
 | インフラ | AWS CDK |
 | テスト | Vitest（単体・結合）、Testing Library（画面の結合テスト）、CDK assertions（インフラ） |
 
 - PDF生成は当初 pdf-lib を予定していたが、日本語フォントをサブセット化して埋め込むと文字が欠ける不具合があったため、PDFKit に変更した
+- ブラウザでPDFを作るときは、Noto Sans JP Regular（TTF）を gzip で圧縮したもの（約3.3MB）を、PDFを作るときに一度だけ読み込み、ブラウザの `DecompressionStream` で展開する（展開できないブラウザでは TTF をそのまま読む、約5.7MB）。読み込む量を減らすため、ブラウザでは太字のフォントを使わない
+  - WOFF2（約2.3MB）も試したが、PDFKit（fontkit）が WOFF2 から必要な文字だけを取り出せず、フォント全体が埋め込まれて PDF が約20MBになったため使わない
 - 画面全体を通した確認（入力 → PDF作成 → 取り込み → CSV）は、Playwright で手動実行して確かめている。自動化したE2Eテストはリポジトリにはまだない
 
 ## 7. データの流れ
@@ -108,9 +113,10 @@ cv/
   ↓
 ├─ JSON ……… ブラウザで生成（サーバー通信なし）
 ├─ CSV ……… ブラウザで生成（サーバー通信なし）
-└─ PDF ……… POST /api/pdf に JSON を送信（Cookie などは送らない）
-              → Lambdaで再チェック → メモリ上で生成（/tmp は使わない）
-              → 履歴書JSONを添付したPDFを返す → 処理終了
+└─ PDF ……… 既定：ブラウザで生成（フォントを読み込むだけ。履歴書データは送信しない）
+              AWS 構成：POST /api/pdf に JSON を送信（Cookie などは送らない）
+                → Lambdaで再チェック → メモリ上で生成（/tmp は使わない）
+                → 履歴書JSONを添付したPDFを返す → 処理終了
 
 【採用担当者】
 PDF取り込み画面でPDFを選ぶ → ブラウザ内で添付JSONを取り出す → CSVを保存
@@ -118,8 +124,9 @@ PDF取り込み画面でPDFを選ぶ → ブラウザ内で添付JSONを取り�
 ```
 
 - ダウンロードするファイル名は `resume.pdf` / `resume.csv` / `resume.json`（英数字）。日本語のファイル名は、ブラウザによっては無視されて "download" などになるため。ファイル名に個人情報は含めない
+- PDFの作成処理（PDFKit、約216KB）とフォントは、「履歴書を作成する」を押したときにだけ読み込む。入力画面の重さは変わらない
 
-## 8. API（`POST /api/pdf`）
+## 8. API（`POST /api/pdf`、AWS 構成のみ）
 
 | 条件 | 応答 |
 |---|---|
@@ -134,7 +141,16 @@ PDF取り込み画面でPDFを選ぶ → ブラウザ内で添付JSONを取り�
 - CORS のヘッダーは返さない
 - ログは決められた項目（イベント名、リクエストID、ステータス、理由、処理時間、例外の種類）だけを出力する。例外のメッセージは個人情報を含みうるため出力しない
 
-## 9. AWS構成
+## 9. 公開の構成
+
+### GitHub Pages（既定）
+
+- `main` への push で、GitHub Actions（`.github/workflows/pages.yml`）が画面をビルドして公開する。独自ドメインは `cv.code4hachioji.org`（DNS の CNAME を `mitani-litus.github.io` に向ける）
+- 静的ファイルだけなので、`/form` と `/import` にも `index.html` の複製を置き、直接開けるようにしている（`404.html` も置く）
+- HTTP ヘッダーを設定できないため、CSP は `<meta>` タグで設定する（`default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests`）。`frame-ancestors` や `X-Frame-Options`、HSTS などのヘッダーは付けられない
+- 広告のURLは、リポジトリの Variables `CV_AD_URL` で設定する（CSP の `frame-src` にも加わる）
+
+### AWS 構成
 
 ```text
 CloudFront（HTTPSへのリダイレクト、セキュリティヘッダー、CSP）
@@ -154,7 +170,8 @@ CloudFront（HTTPSへのリダイレクト、セキュリティヘッダー、CS
 
 ## 10. ローカル開発
 
-`docker compose up --build` で次の3つを起動する。AWSへの接続は不要。
+- `npm run dev` だけで、GitHub Pages と同じ構成（PDFもブラウザで作る）を確認できる
+- AWS 構成（PDFを Lambda で作る）は、`docker compose up --build` で次の3つを起動して確認する。AWSへの接続は不要。`web` には `VITE_PDF_API=/api/pdf` を設定している
 
 - `web`：Viteの開発サーバー。`/api` へのリクエストは `gateway` に転送する
 - `gateway`：API Gatewayの代わり。HTTPリクエストをLambdaのイベントに変換する（依存パッケージのないJavaScript 1ファイル）
@@ -204,11 +221,13 @@ A4縦・2ページの固定様式（厚生労働省の履歴書様式例など�
 - 長い本文は表の次の行に折り返す。句読点や閉じ括弧は行頭に置かない
 - 仕様により、顔写真欄・性別欄は設けない。入力項目にない連絡先欄も設けない
 - PDFの文書情報（タイトルなど）には個人情報を入れない（タイトルは「履歴書」）
+- ブラウザで作るときは太字のフォントを読み込まないため、表題「履 歴 書」も通常の太さになる（AWS 構成では太字）
 
 ## 13. 残っている課題
 
-- **API Gatewayの既定URL（execute-api）**：CloudFrontを通さず直接呼び出せる。ブラウザからは `Origin` の照合で、大量の呼び出しはスロットリングで抑えている。より厳しくする場合は、CloudFrontから秘密のヘッダーを付けてLambdaで照合するか、AWS WAFを追加する（現時点では対応しないと決定）
+- **GitHub Pages のヘッダー**：`frame-ancestors`・`X-Frame-Options` を設定できないため、ほかのサイトの画面に埋め込まれる可能性がある。このサービスには送信やログインなどの操作がないため、影響は小さいと判断している
+- **API Gatewayの既定URL（execute-api、AWS 構成）**：CloudFrontを通さず直接呼び出せる。ブラウザからは `Origin` の照合で、大量の呼び出しはスロットリングで抑えている。より厳しくする場合は、CloudFrontから秘密のヘッダーを付けてLambdaで照合するか、AWS WAFを追加する（現時点では対応しないと決定）
 - **npm audit**：`aws-cdk-lib` が内部に同梱している `brace-expansion` に「high」が1件出る。デプロイ時だけ使う開発用のツールで、公開する画面やAPIには含まれないため、`aws-cdk-lib` の更新を待つ（決定済み）
-- **実際のAWSへのデプロイ**：未確認。初回のデプロイ後に、READMEの「データが残らないことの確認」の手順でCloudWatch Logsを確認する
+- **実際のAWSへのデプロイ**：未確認（既定の公開先は GitHub Pages に変更）。AWS 構成でデプロイする場合は、READMEの「データが残らないことの確認」の手順でCloudWatch Logsを確認する
 - **自動化したE2Eテスト**：未作成（手動のPlaywrightでの確認のみ）
 - **脆弱性の非公開報告**：READMEでは GitHub の「Report a vulnerability」から報告するよう案内している。リポジトリの設定で Private vulnerability reporting を有効にする必要がある
