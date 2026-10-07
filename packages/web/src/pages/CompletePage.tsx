@@ -2,6 +2,7 @@ import type { Resume } from '@cv/schema';
 import { useEffect, useRef } from 'react';
 import { Icon } from '../components/Icon';
 import { Page } from '../components/Layout';
+import { PDF_IN_BROWSER } from '../config';
 import { downloadBlob, FILE_NAMES } from '../lib/download';
 import { downloadCsv, downloadJson } from '../lib/files';
 
@@ -63,7 +64,11 @@ export function CompletePage({ resume, pdf }: { resume: Resume; pdf: Blob }) {
           <div className="app-local" style={{ justifyContent: 'flex-start' }}>
             <p className="app-local__text">
               <Icon name="shield" />
-              <span>このサービスでは、履歴書情報を原則として保存していません。PDFの作成に必要な処理を行った後、入力データは保持しない設計になっています。</span>
+              <span>
+                {PDF_IN_BROWSER
+                  ? 'このサービスでは、履歴書情報を保存していません。PDF・CSV・JSONは、すべてこの端末の中で作成しました。'
+                  : 'このサービスでは、履歴書情報を原則として保存していません。PDFの作成に必要な処理を行った後、入力データは保持しない設計になっています。'}
+              </span>
             </p>
           </div>
         </div>

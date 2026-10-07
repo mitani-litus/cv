@@ -3,6 +3,11 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { PdfRequestError } from './lib/api';
+import { createPdf } from './lib/pdf';
+
+// PDFの作成処理そのものは lib/pdf.test.ts と packages/pdf で確かめる
+vi.mock('./lib/pdf', () => ({ createPdf: vi.fn() }));
 
 function start(path = '/form') {
   window.history.pushState(null, '', path);
@@ -22,6 +27,7 @@ async function fillBasic(user: ReturnType<typeof userEvent.setup>) {
 }
 
 beforeEach(() => {
+  vi.mocked(createPdf).mockReset();
   window.scrollTo = vi.fn();
   Element.prototype.scrollIntoView = vi.fn();
   URL.createObjectURL = vi.fn(() => 'blob:test');
@@ -126,29 +132,26 @@ describe('入力フォーム', () => {
   });
 
   it('確認画面から「履歴書を作成する」でPDFを作成し、完了画面を表示する', async () => {
-    const fetchMock = vi.fn(async () => new Response('%PDF-1.7', { status: 200, headers: { 'Content-Type': 'application/pdf' } }));
-    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(createPdf).mockResolvedValue(new Blob(['%PDF-1.7'], { type: 'application/pdf' }));
     const user = start();
     await fillBasic(user);
     for (let i = 0; i < 5; i++) await user.click(next());
     expect(screen.getByRole('heading', { level: 1, name: '入力内容を確認してください' })).toBeTruthy();
     expect(screen.getByText('山田 太郎（ヤマダ タロウ）')).toBeTruthy();
+    // 既定の構成（PDFもブラウザで作る）では、送信しないことを説明する
+    expect(screen.getByText(/入力内容をサーバーへ送信することはありません/)).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: '履歴書を作成する' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: '履歴書を作成しました' })).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('/api/pdf');
-    expect(init.credentials).toBe('omit');
-    const sent = JSON.parse(init.body as string);
-    expect(sent.personal.phone).toBe('090-1234-5678');
+    expect(createPdf).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(createPdf).mock.calls[0]![0].personal.phone).toBe('090-1234-5678');
     expect(screen.getByRole('button', { name: 'PDFをダウンロード' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'CSVをダウンロード' })).toBeTruthy();
   });
 
   it('PDFの作成に失敗したら、入力内容を残したままエラーを表示する', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+    vi.mocked(createPdf).mockRejectedValue(new PdfRequestError('font'));
     const user = start();
     await fillBasic(user);
     for (let i = 0; i < 5; i++) await user.click(next());
@@ -156,6 +159,7 @@ describe('入力フォーム', () => {
 
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText('PDFを作成できませんでした')).toBeTruthy();
+    expect(within(alert).getByText(/フォントを読み込めませんでした/)).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: '入力内容を確認してください' })).toBeTruthy();
   });
 

@@ -2,7 +2,7 @@ import type { Resume } from '@cv/schema';
 import { useRef, useState } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { Page } from '../components/Layout';
-import { AD_URL } from '../config';
+import { AD_URL, PDF_IN_BROWSER } from '../config';
 import { readDraftFile, today } from '../lib/draft';
 import { Link, navigate } from '../router';
 
@@ -13,14 +13,17 @@ const FEATURES: { icon: IconName; kicker: string; title: string; text: string }[
     icon: 'shield',
     kicker: '安心',
     title: '原則データ保存なし',
-    text: '入力した情報をデータベースに保存しません。PDFの作成後、サーバーでは入力データを保持しない設計です。',
+    text: PDF_IN_BROWSER
+      ? 'PDFもCSVも、お使いの端末の中で作成します。入力した情報をサーバーへ送信・保存しません。'
+      : '入力した情報をデータベースに保存しません。PDFの作成後、サーバーでは入力データを保持しない設計です。',
   },
 ];
 
 const POLICY = [
   '入力中のデータは、お使いのブラウザの中だけに保持されます。',
-  'CSVとJSONは、お使いの端末の中で作成します。',
-  'PDFを作成するときだけ入力内容をサーバーへ送り、作成後は保持しません。',
+  ...(PDF_IN_BROWSER
+    ? ['PDF・CSV・JSONは、すべてお使いの端末の中で作成します。入力内容をサーバーへ送信しません。']
+    : ['CSVとJSONは、お使いの端末の中で作成します。', 'PDFを作成するときだけ入力内容をサーバーへ送り、作成後は保持しません。']),
   '顔写真は扱いません。',
   '入力内容を広告に利用することはありません。',
   'ソースコードを公開しています（MITライセンス）。',
