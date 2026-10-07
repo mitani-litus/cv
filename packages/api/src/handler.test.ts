@@ -20,6 +20,8 @@ function resume(): Resume {
     givenName: '太郎',
     familyNameKana: 'ヤマダ',
     givenNameKana: 'タロウ',
+    middleName: '',
+    middleNameKana: '',
     birthDate: '1985-04-01',
     gender: '',
     postalCode: '100-0001',

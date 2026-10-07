@@ -16,8 +16,10 @@ export const DEFAULT_LAYOUT = { photoBox: true, genderField: false } as const;
 export const LIMITS = {
   familyName: 50,
   givenName: 50,
+  middleName: 50,
   familyNameKana: 50,
   givenNameKana: 50,
+  middleNameKana: 50,
   city: 50,
   street: 100,
   building: 100,

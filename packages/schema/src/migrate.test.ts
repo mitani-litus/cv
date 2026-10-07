@@ -45,7 +45,7 @@ describe('migrateResume（1.0 → 2.0）', () => {
 
   it('氏名を最初の空白で姓と名に分ける（空白がなければすべて姓）', () => {
     const m = migrateResume(v1()) as { personal: Record<string, unknown> };
-    expect(m.personal).toMatchObject({ familyName: '箕谷', givenName: '祐也', familyNameKana: 'ミタニ', givenNameKana: 'ユウヤ' });
+    expect(m.personal).toMatchObject({ familyName: '箕谷', givenName: '祐也', middleName: '', familyNameKana: 'ミタニ', givenNameKana: 'ユウヤ', middleNameKana: '' });
     expect(m.personal).not.toHaveProperty('name');
     const single = v1();
     single.personal.name = '箕谷祐也';

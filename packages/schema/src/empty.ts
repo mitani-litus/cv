@@ -17,8 +17,10 @@ export function createEmptyResume(createdAt: string, id = newApplicantId()): Res
     personal: {
       familyName: '',
       givenName: '',
+      middleName: '',
       familyNameKana: '',
       givenNameKana: '',
+      middleNameKana: '',
       birthDate: '',
       gender: '',
       postalCode: '',
