@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+# main に入った変更を、GitHub Pages（https://cv.code4hachioji.org/）に公開する。
+# この構成ではPDFもブラウザの中で作るため、サーバーは使わない（静的ファイルだけ）。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build -w @cv/web
+        env:
+          # 広告を表示する場合は、リポジトリの Variables に CV_AD_URL を設定する
+          VITE_AD_URL: ${{ vars.CV_AD_URL }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
