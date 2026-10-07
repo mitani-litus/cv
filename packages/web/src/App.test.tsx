@@ -83,6 +83,38 @@ describe('入力フォーム', () => {
     expect(screen.queryByRole('heading', { name: '学歴 2' })).toBeNull();
   });
 
+  it('学歴で「入学」を選ぶと、学校名を写した「卒業」の行が追加される', async () => {
+    const user = start();
+    await fillBasic(user);
+    await user.click(next());
+    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await user.type(screen.getByLabelText('学校名'), '○○高等学校');
+    await user.selectOptions(screen.getByLabelText('区分'), '入学');
+
+    expect(screen.getByRole('heading', { name: '学歴 2' })).toBeTruthy();
+    const schools = screen.getAllByLabelText('学校名') as HTMLInputElement[];
+    expect(schools.map((s) => s.value)).toEqual(['○○高等学校', '○○高等学校']);
+    const categories = screen.getAllByLabelText('区分') as HTMLSelectElement[];
+    expect(categories.map((c) => c.value)).toEqual(['入学', '卒業']);
+  });
+
+  it('職歴で「入社」を選ぶと「退職」の行が追加され、退職の行を消すと「現在に至る」になる', async () => {
+    const user = start();
+    await fillBasic(user);
+    await user.click(next());
+    await user.click(next());
+    await user.click(screen.getByRole('button', { name: '職歴を追加' }));
+    await user.type(screen.getByLabelText('会社名'), '株式会社○○');
+    await user.selectOptions(screen.getByLabelText('区分'), '入社');
+    expect((screen.getAllByLabelText('区分') as HTMLSelectElement[]).map((c) => c.value)).toEqual(['入社', '退職']);
+    expect((screen.getAllByLabelText('会社名') as HTMLInputElement[])[1]!.value).toBe('株式会社○○');
+
+    await user.click(screen.getByRole('button', { name: '職歴 2 を削除' }));
+    for (let i = 0; i < 3; i++) await user.click(next());
+    expect(screen.getByRole('heading', { level: 1, name: '入力内容を確認してください' })).toBeTruthy();
+    expect(screen.getByText('現在に至る')).toBeTruthy();
+  });
+
   it('月だけ入力した行はエラーにする', async () => {
     const user = start();
     await fillBasic(user);
