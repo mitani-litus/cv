@@ -8,27 +8,50 @@
 
 > 開発中です。セットアップ方法やデプロイ方法は、実装の進行にあわせて追記します。
 
-## 開発
+## ローカルで動かす
+
+AWS に接続しなくても、入力フォームからPDF・CSV・JSONの作成、PDFの取り込みまで確認できます。
+
+### Docker で動かす（本番と同じ Lambda イメージを使う）
+
+```sh
+docker compose up --build
+```
+
+http://localhost:5173 を開きます。PDF生成APIは、本番と同じ Lambda コンテナイメージを AWS 公式の Runtime Interface Emulator で動かしています（読み取り専用のファイルシステムで起動）。
+
+`public.ecr.aws` に接続できない環境では、Docker Hub にある同じイメージを使えます。
+
+```sh
+LAMBDA_BASE_IMAGE=amazon/aws-lambda-nodejs:22 docker compose up --build
+```
+
+### Node.js だけで動かす
 
 Node.js 22 以上が必要です。
 
 ```sh
 npm install
-npm run dev     # 入力フォームを http://localhost:5173 で起動
-npm run check   # 型チェックとテスト
-npm run build   # 本番用にビルド（packages/web/dist）
+npm run dev:api   # PDF生成API（http://localhost:9000）
+npm run dev       # 入力フォーム（http://localhost:5173）。/api は 9000 番に転送
 ```
 
-PDFの作成（`/api/pdf`）は `packages/api` で実装予定です。それまでは、確認画面の「履歴書を作成する」はエラーになります。
+### 開発用のコマンド
+
+```sh
+npm run check   # 型チェックとテスト
+npm run build   # 本番用にビルド（packages/web/dist、packages/api/dist）
+```
 
 | パッケージ | 内容 |
 |---|---|
 | `packages/schema` | 履歴書JSONのスキーマと入力チェック（ブラウザとAPIで共用） |
 | `packages/core` | CSV変換、表示用の整形、年齢計算（ブラウザで動作） |
 | `packages/web` | 入力フォーム、確認・完了画面、PDF取り込み画面（Vite + React） |
+| `packages/api` | PDF生成API（AWS Lambda、PDFKit）。履歴書JSONをPDFに添付する |
 
 ## ライセンス
 
 [MIT License](LICENSE)
 
-画面のスタイル（`packages/web/src/styles/design-system.css`）は、デジタル庁デザインシステムの公式HTMLサンプル（MIT License, © 2023 デジタル庁）をもとにしています。フォントは Noto Sans JP（SIL Open Font License 1.1）を同梱しています。
+画面のスタイル（`packages/web/src/styles/design-system.css`）は、デジタル庁デザインシステムの公式HTMLサンプル（MIT License, © 2023 デジタル庁）をもとにしています。フォントは Noto Sans JP（SIL Open Font License 1.1）を同梱しています（画面用は `@fontsource/noto-sans-jp`、PDF用は `@expo-google-fonts/noto-sans-jp`）。
