@@ -6,7 +6,7 @@ import { newApplicantId } from './empty';
  * 以前に保存したJSONや、以前に作成したPDFに添付されたJSONを読み込めるようにするため。
  *
  * 1.0 からの主な変更
- * - 氏名（name, nameKana）を姓・名に分ける（最初の空白で区切る。空白がなければすべて姓にする）
+ * - 氏名（name, nameKana）を姓・名に分ける（最初の空白で区切る。空白がなければすべて名にする）
  * - 学歴・職歴を「1行 = 1つの出来事（入学、卒業など）」から「1件 = 1校・1社」にする
  *   （「入学」とすぐ後の同じ学校の「卒業」などを1件にまとめる。対にならない行はそのまま1件にする）
  * - 性別を選択式にする（選択肢に当てはまらない値は空欄にする）
@@ -31,11 +31,14 @@ function yearMonthOf(e: Obj) {
 
 const EMPTY_YEAR_MONTH = { year: null, month: null };
 
-/** "山田 太郎" → ["山田", "太郎"]（全角・半角の空白で区切る） */
+/**
+ * "山田 太郎" → ["山田", "太郎"]（全角・半角の空白で区切る）。
+ * 空白がなければすべて名にする（名は必須、姓は任意のため）。
+ */
 function splitName(v: unknown): [string, string] {
   const s = str(v).trim();
   const m = /^(\S+?)[\s　]+(.+)$/u.exec(s);
-  return m ? [m[1]!, m[2]!.trim()] : [s, ''];
+  return m ? [m[1]!, m[2]!.trim()] : ['', s];
 }
 
 const GENDER_ALIASES: Record<string, (typeof GENDERS)[number]> = { 男: '男性', 女: '女性' };
