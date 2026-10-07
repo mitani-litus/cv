@@ -14,6 +14,7 @@ import {
   formatDateJa,
   formatYearMonth,
   formatYearMonthJa,
+  isCurrentlyEmployed,
   toCsv,
   toCsvRow,
   toHalfWidthDigits,
@@ -255,5 +256,23 @@ describe('toCsv', () => {
 
   it('複数の履歴書を1ファイルにできる', () => {
     expect(parseCsv(toCsv([sampleResume(), sampleResume()]))).toHaveLength(3);
+  });
+});
+
+describe('isCurrentlyEmployed', () => {
+  const job = (category: '入社' | '退職' | '', company = '株式会社○○') => ({ ...createEmptyEmployment(), year: 2008, category, company });
+
+  it('最後の行が入社なら在職中', () => {
+    expect(isCurrentlyEmployed([job('入社')])).toBe(true);
+    expect(isCurrentlyEmployed([job('入社'), job('退職'), job('入社', '株式会社△△')])).toBe(true);
+  });
+
+  it('最後の行が退職、または職歴がなければ在職中ではない', () => {
+    expect(isCurrentlyEmployed([job('入社'), job('退職')])).toBe(false);
+    expect(isCurrentlyEmployed([])).toBe(false);
+  });
+
+  it('空の行は無視する', () => {
+    expect(isCurrentlyEmployed([job('入社'), createEmptyEmployment()])).toBe(true);
   });
 });
