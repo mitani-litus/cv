@@ -6,12 +6,16 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/pdf-font.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/pdf-font.mjs",
     "build": "vite build",
+    "build:aws": "node scripts/pdf-font.mjs && vite build --mode aws",
     "preview": "vite preview"
   },
   "dependencies": {
     "@cv/core": "*",
+    "@cv/pdf": "*",
     "@cv/schema": "*",
     "@fontsource/noto-sans-jp": "^5.3.0",
     "pdfjs-dist": "^6.4.299",
@@ -19,6 +23,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@expo-google-fonts/noto-sans-jp": "^0.4.4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
