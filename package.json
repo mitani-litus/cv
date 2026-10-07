@@ -8,15 +8,18 @@
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "infra"
   ],
   "scripts": {
     "dev": "npm run dev -w @cv/web",
     "dev:api": "npm run dev -w @cv/api",
     "build": "npm run build -w @cv/web && npm run build -w @cv/api",
-    "typecheck": "tsc -p packages/schema && tsc -p packages/core && tsc -p packages/web && tsc -p packages/api",
+    "typecheck": "tsc -p packages/schema && tsc -p packages/core && tsc -p packages/web && tsc -p packages/api && tsc -p infra",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "synth": "npm run synth -w @cv/infra",
+    "deploy": "npm run build && npm run deploy -w @cv/infra"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
