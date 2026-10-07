@@ -12,8 +12,12 @@ export function downloadBlob(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
+/**
+ * 保存するファイル名。日本語のファイル名は、ブラウザによっては無視されて "download" などになるため、
+ * 英数字にしている。ファイル名には個人情報（氏名など）を含めない。
+ */
 export const FILE_NAMES = {
-  pdf: '履歴書.pdf',
-  csv: '履歴書.csv',
-  json: '履歴書.json',
+  pdf: 'resume.pdf',
+  csv: 'resume.csv',
+  json: 'resume.json',
 } as const;
