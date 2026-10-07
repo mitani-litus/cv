@@ -16,8 +16,10 @@ const SECRET = 'SECRET-山田-12345';
 function resume(): Resume {
   const r = createEmptyResume('2026-10-07');
   r.personal = {
-    name: '山田 太郎',
-    nameKana: 'ヤマダ タロウ',
+    familyName: '山田',
+    givenName: '太郎',
+    familyNameKana: 'ヤマダ',
+    givenNameKana: 'タロウ',
     birthDate: '1985-04-01',
     gender: '',
     postalCode: '100-0001',
@@ -25,8 +27,8 @@ function resume(): Resume {
     phone: '090-1234-5678',
     email: 'taro@example.jp',
   };
-  r.education = [{ ...createEmptyEducation(), year: 2001, month: 4, category: '入学', school: '○○高等学校' }];
-  r.employment = [{ ...createEmptyEmployment(), year: 2008, month: 4, category: '入社', company: '株式会社○○' }];
+  r.education = [{ ...createEmptyEducation(), school: '○○高等学校', start: { year: 2001, month: 4 } }];
+  r.employment = [{ ...createEmptyEmployment(), company: '株式会社○○', start: { year: 2008, month: 4 } }];
   r.qualifications = [{ ...createEmptyQualification(), year: 2004, month: 8, name: '普通自動車第一種運転免許' }];
   r.motivation = '貴社の事業に関心があり、志望しました。';
   return r;
@@ -124,11 +126,11 @@ describe('POST /api/pdf', () => {
     expect(texts[1]).not.toContain('別紙のとおり');
   });
 
-  it('職歴の最後が入社なら「現在に至る」と記載し、退職なら記載しない', async () => {
+  it('職歴の最後の1件が在職中なら「現在に至る」と記載し、退職済みなら記載しない', async () => {
     const working = await pageTexts(Buffer.from((await handler(event(resume()))).body, 'base64'));
     expect(working[0]).toContain('現在に至る');
     const r = resume();
-    r.employment = [...r.employment, { ...createEmptyEmployment(), year: 2020, month: 3, category: '退職', company: '株式会社○○' }];
+    r.employment = [{ ...r.employment[0]!, end: { year: 2020, month: 3 } }];
     const retired = await pageTexts(Buffer.from((await handler(event(r))).body, 'base64'));
     expect(retired[0]).not.toContain('現在に至る');
     expect(retired[0]).toContain('以上');
@@ -156,7 +158,14 @@ describe('POST /api/pdf', () => {
 
   it('件数・文字数が上限いっぱいでも、ページを増やして作成できる', async () => {
     const r = resume();
-    r.education = Array.from({ length: LIMITS.entries }, (_, i) => ({ ...createEmptyEducation(), year: 2000 + (i % 20), month: 4, school: 'あ'.repeat(LIMITS.entryText), note: 'い'.repeat(LIMITS.note) }));
+    r.education = Array.from({ length: LIMITS.entries }, (_, i) => ({
+      ...createEmptyEducation(),
+      start: { year: 2000 + (i % 20), month: 4 },
+      end: { year: 2001 + (i % 20), month: 3 },
+      status: '卒業' as const,
+      school: 'あ'.repeat(LIMITS.entryText),
+      note: 'い'.repeat(LIMITS.note),
+    }));
     r.employment = Array.from({ length: LIMITS.entries }, () => ({ ...createEmptyEmployment(), company: 'う'.repeat(LIMITS.entryText) }));
     r.qualifications = Array.from({ length: LIMITS.entries }, () => ({ ...createEmptyQualification(), name: 'え'.repeat(LIMITS.entryText) }));
     r.motivation = 'お'.repeat(LIMITS.motivation);
@@ -225,7 +234,7 @@ describe('POST /api/pdf', () => {
   describe('ログ', () => {
     it('成功時も失敗時も、ログに個人情報を出さない', async () => {
       const r = resume();
-      r.personal.name = SECRET;
+      r.personal.familyName = SECRET;
       await handler(event(r));
       await handler(event({ ...r, personal: { ...r.personal, email: SECRET } }));
       await handler(event(`{"name":"${SECRET}"`));
