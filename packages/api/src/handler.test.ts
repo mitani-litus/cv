@@ -43,6 +43,20 @@ function event(body: unknown, overrides: Partial<HttpEvent> & { headers?: Record
   };
 }
 
+/** PDFの各ページの文字を取り出す */
+async function pageTexts(pdf: Buffer): Promise<string[]> {
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const task = pdfjs.getDocument({ data: new Uint8Array(pdf) });
+  const doc = await task.promise;
+  const texts: string[] = [];
+  for (let i = 1; i <= doc.numPages; i++) {
+    const content = await (await doc.getPage(i)).getTextContent();
+    texts.push(content.items.map((item) => ('str' in item ? item.str : '')).join(''));
+  }
+  await task.destroy();
+  return texts;
+}
+
 /** PDFから添付ファイルを取り出す（ブラウザの取り込み画面と同じく pdf.js を使う） */
 async function attachments(pdf: Buffer) {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -91,6 +105,43 @@ describe('POST /api/pdf', () => {
     const { files } = await attachments(Buffer.from(res.body, 'base64'));
     expect([...files.keys()]).toEqual([EMBEDDED_JSON_NAME]);
     expect(JSON.parse(files.get(EMBEDDED_JSON_NAME)!)).toEqual(input);
+  });
+
+  it('通常の分量なら A4 の2ページに収め、各欄を決まったページに置く', async () => {
+    const r = resume();
+    r.selfIntroduction = '前職では法人営業を担当しました。'.repeat(15);
+    const res = await handler(event(r));
+    const texts = await pageTexts(Buffer.from(res.body, 'base64'));
+    expect(texts).toHaveLength(2);
+    expect(texts[0]).toContain('山田 太郎');
+    expect(texts[0]).toContain('学歴・職歴');
+    expect(texts[1]).toContain('免許・資格');
+    expect(texts[1]).toContain('志望動機');
+    expect(texts[1]).toContain('自己PR');
+    expect(texts[1]).toContain('本人希望記入欄');
+    // 自己PR はページをまたがずに、2ページ目の枠に収まる
+    expect(texts[1]).toContain('前職では法人営業を担当しました。');
+    expect(texts[1]).not.toContain('別紙のとおり');
+  });
+
+  it('職歴の最後が入社なら「現在に至る」と記載し、退職なら記載しない', async () => {
+    const working = await pageTexts(Buffer.from((await handler(event(resume()))).body, 'base64'));
+    expect(working[0]).toContain('現在に至る');
+    const r = resume();
+    r.employment = [...r.employment, { ...createEmptyEmployment(), year: 2020, month: 3, category: '退職', company: '株式会社○○' }];
+    const retired = await pageTexts(Buffer.from((await handler(event(r))).body, 'base64'));
+    expect(retired[0]).not.toContain('現在に至る');
+    expect(retired[0]).toContain('以上');
+  });
+
+  it('枠に収まらない文章は「別紙のとおり」とし、別紙に全文を記載する', async () => {
+    const r = resume();
+    r.selfIntroduction = 'か\n'.repeat(LIMITS.selfIntroduction / 2);
+    const texts = await pageTexts(Buffer.from((await handler(event(r))).body, 'base64'));
+    expect(texts.length).toBeGreaterThan(2);
+    expect(texts[1]).toContain('別紙のとおり');
+    expect(texts.slice(2).join('')).toContain('別紙');
+    expect(texts.slice(2).join('').split('か').length - 1).toBe(LIMITS.selfIntroduction / 2);
   });
 
   it('PDFの文書情報に個人情報を入れない', async () => {
