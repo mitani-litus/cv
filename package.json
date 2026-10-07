@@ -11,7 +11,7 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc -p packages/schema",
+    "typecheck": "tsc -p packages/schema && tsc -p packages/core",
     "test": "vitest run",
     "check": "npm run typecheck && npm run test"
   },
