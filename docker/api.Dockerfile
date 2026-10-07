@@ -12,12 +12,14 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/schema/package.json packages/schema/
 COPY packages/core/package.json packages/core/
+COPY packages/pdf/package.json packages/pdf/
 COPY packages/api/package.json packages/api/
 COPY packages/web/package.json packages/web/
 RUN npm ci --workspace @cv/api --include-workspace-root --ignore-scripts --no-audit --no-fund
 COPY tsconfig.base.json ./
 COPY packages/schema packages/schema
 COPY packages/core packages/core
+COPY packages/pdf packages/pdf
 COPY packages/api packages/api
 RUN npm run build -w @cv/api
 
