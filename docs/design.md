@@ -79,7 +79,7 @@ cv/
 └── docs/            # 仕様書と設計メモ
 ```
 
-`SECURITY.md` と `CONTRIBUTING.md` はまだ作成していない（下記「13. 残っている課題」）。
+セキュリティポリシー（脆弱性の報告方法）とコントリビューション方法は、README に記載している。
 
 ## 6. 使用技術
 
@@ -211,4 +211,4 @@ A4縦・2ページの固定様式（厚生労働省の履歴書様式例など�
 - **npm audit**：`aws-cdk-lib` が内部に同梱している `brace-expansion` に「high」が1件出る。デプロイ時だけ使う開発用のツールで、公開する画面やAPIには含まれないため、`aws-cdk-lib` の更新を待つ（決定済み）
 - **実際のAWSへのデプロイ**：未確認。初回のデプロイ後に、READMEの「データが残らないことの確認」の手順でCloudWatch Logsを確認する
 - **自動化したE2Eテスト**：未作成（手動のPlaywrightでの確認のみ）
-- **SECURITY.md / CONTRIBUTING.md**：未作成。仕様書第17章の「セキュリティポリシー」「コントリビューション方法」は、READMEにもまだ記載していない
+- **脆弱性の非公開報告**：READMEでは GitHub の「Report a vulnerability」から報告するよう案内している。リポジトリの設定で Private vulnerability reporting を有効にする必要がある
