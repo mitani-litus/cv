@@ -19,6 +19,11 @@ export function formatDateJa(isoDate: string): string {
   return `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日`;
 }
 
+/** 出力する性別。性別欄を設けない様式では、入力があっても出力しない */
+export function outputGender(resume: Pick<Resume, 'layout' | 'personal'>): string {
+  return resume.layout.genderField ? resume.personal.gender.trim() : '';
+}
+
 /** 住所を1行にまとめる（建物名の前だけ全角スペースで区切る） */
 export function formatAddress(address: Resume['personal']['address']): string {
   const main = `${address.prefecture}${address.city}${address.street}`;

@@ -26,6 +26,7 @@ function sampleResume(): Resume {
     name: '山田 太郎',
     nameKana: 'ヤマダ タロウ',
     birthDate: '1985-04-01',
+    gender: '',
     postalCode: '100-0001',
     address: { prefecture: '東京都', city: '千代田区', street: '千代田1-1', building: '○○ビル101' },
     phone: '090-1234-5678',
@@ -183,6 +184,7 @@ describe('toCsv', () => {
       氏名フリガナ: 'ヤマダ タロウ',
       生年月日: '1985-04-01',
       年齢: '41',
+      性別: '',
       郵便番号: '100-0001',
       住所: '東京都千代田区千代田1-1　○○ビル101',
       電話番号: '090-1234-5678',
@@ -211,6 +213,20 @@ describe('toCsv', () => {
     const r = sampleResume();
     r.qualifications = [createEmptyQualification(), ...r.qualifications, createEmptyQualification()];
     expect(toCsvRow(r)[CSV_HEADERS.indexOf('資格・免許')]).toBe('2004/08 普通自動車第一種運転免許 取得');
+  });
+
+  it('性別の列は年齢の後にある', () => {
+    expect(CSV_HEADERS.slice(3, 6)).toEqual(['生年月日', '年齢', '性別']);
+  });
+
+  it('性別は、性別欄を設ける様式のときだけ出力する', () => {
+    const r = sampleResume();
+    r.personal.gender = '女';
+    expect(toCsvRow(r)[CSV_HEADERS.indexOf('性別')]).toBe('');
+    r.layout = { ...r.layout, genderField: true };
+    expect(toCsvRow(r)[CSV_HEADERS.indexOf('性別')]).toBe('女');
+    r.personal.gender = '=1+1';
+    expect(parseCsv(toCsv(r))[1]![CSV_HEADERS.indexOf('性別')]).toBe("'=1+1");
   });
 
   it('生年月日がなければ年齢は空', () => {

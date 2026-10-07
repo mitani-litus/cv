@@ -9,6 +9,7 @@ export {
   formatDateJa,
   formatYearMonth,
   formatYearMonthJa,
+  outputGender,
 } from './format';
 export { CURRENTLY_EMPLOYED_TEXT, isCurrentlyEmployed } from './employment';
 export { toHalfWidthDigits } from './normalize';

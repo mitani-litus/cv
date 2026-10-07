@@ -6,6 +6,7 @@ import {
   describeQualification,
   entryLine,
   formatAddress,
+  outputGender,
 } from './format';
 
 const BOM = '﻿';
@@ -17,6 +18,7 @@ export const CSV_HEADERS = [
   '氏名フリガナ',
   '生年月日',
   '年齢',
+  '性別',
   '郵便番号',
   '住所',
   '電話番号',
@@ -67,6 +69,7 @@ export function toCsvRow(resume: Resume): string[] {
     personal.nameKana,
     personal.birthDate,
     age === null ? '' : String(age),
+    outputGender(resume),
     personal.postalCode,
     formatAddress(personal.address),
     personal.phone,
