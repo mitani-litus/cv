@@ -50,6 +50,51 @@ npm run build   # 本番用にビルド（packages/web/dist、packages/api/dist�
 | `packages/web` | 入力フォーム、確認・完了画面、PDF取り込み画面（Vite + React） |
 | `packages/api` | PDF生成API（AWS Lambda、PDFKit）。履歴書JSONをPDFに添付する |
 
+## AWS へのデプロイ
+
+AWS CDK（`infra/`）で、次の構成を作成します。履歴書データを保存するデータベースやストレージは作りません。
+
+```text
+CloudFront（HTTPS、セキュリティヘッダー、CSP）
+ ├─ /*      → S3（非公開。CloudFront からだけ読める。画面のファイルだけを置く）
+ └─ /api/*  → API Gateway（HTTP API、スロットリング）→ Lambda（コンテナイメージ、ECR）
+```
+
+### 必要なもの
+
+- AWS アカウントと、デプロイできる権限を持つ認証情報（`aws configure` など）
+- Docker（Lambda のコンテナイメージをビルドするため。Windows / macOS は Docker Desktop）
+- Node.js 22 以上
+
+### 手順
+
+```sh
+npm ci
+npm run cdk -w @cv/infra -- bootstrap   # 初回だけ（アカウントとリージョンごと）
+npm run deploy                   # 画面とAPIをビルドしてデプロイ
+```
+
+完了すると `SiteUrl`（CloudFront のURL）が表示されます。リージョンの既定は東京（`ap-northeast-1`）です。
+
+### 設定（任意）
+
+`cdk deploy` に `-c 名前=値` で渡します（例：`npm run build && npm run cdk -w @cv/infra -- deploy -c domainName=cv.example.jp -c certificateArn=...`）。
+
+| 名前 | 内容 |
+|---|---|
+| `domainName` / `certificateArn` | 独自ドメインと、us-east-1 の ACM 証明書。Lambda が受け付ける Origin にも加わる |
+| `adOrigin` | 広告ページのオリジン（例：`https://ads.example.com`）。CSP の `frame-src` に加わる。画面側はビルド時に `VITE_AD_URL` も設定する |
+| `throttleRate` / `throttleBurst` | API のスロットリング（既定：1秒あたり5件、瞬間的に10件） |
+| `region` / `stackName` | リージョン（既定 `ap-northeast-1`）とスタック名（既定 `CvStack`） |
+
+### データが残らないことの確認
+
+- **データベース**：作成しません（`infra/test` のテストで確認しています）。
+- **S3**：画面のファイルだけを置きます。PDF・CSV・JSON は置きません。
+- **Lambda**：PDF はメモリ上で作り、`/tmp` を含めてファイルに書きません（ローカルでは読み取り専用のファイルシステムで動作を確認しています）。
+- **ログ**：Lambda のログは決められた項目（イベント名、リクエストID、ステータス、処理時間）だけです。API Gateway のアクセスログには、本文や送信元IPを記録しません。CloudFront のアクセスログは無効です。ログの保存期間は1か月です。
+- デプロイ後は、PDF を1件作ってから、CloudWatch Logs に氏名やメールアドレスが含まれていないことを確認してください（例：Logs Insights で `filter @message like /@/`）。
+
 ## ライセンス
 
 [MIT License](LICENSE)
