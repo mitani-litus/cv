@@ -1,0 +1,413 @@
+/* 履歴書データ化 — 画面レイアウト（ワイヤーフレームから移植）
+   部品（ボタン・入力欄・バナー・リンク）は design-system.css（ブルー基本デザインシステム）を使う。
+   このファイルは、design-system.css が参照するトークン変数と、画面固有のレイアウトだけを定義する。 */
+
+:root {
+  /* ---- ブルー基本デザインシステム tokens.json の値 ---- */
+  --white: #ffffff;
+  --black: #000000;
+  --gray-50: #f2f2f2;
+  --gray-100: #e6e6e6;
+  --gray-420: #949494;
+  --gray-536: #767676;
+  --red-1000: #a90000;
+  --yellow-400: #ffc700;
+
+  --surface: #ffffff;
+  --surface-subtle: #f2f2f2;
+  --surface-key: #e8f1fe;
+  --text-strong: #1a1a1a;
+  --text-body: #333333;
+  --text-muted: #666666;
+  --text-disabled: #949494;
+  --text-on-key: #ffffff;
+  --key: #0017c1;
+  --key-hover: #00118f;
+  --key-active: #000060;
+  --key-tint-hover: #c5d7fb;
+  --key-tint-active: #9db7f9;
+  --key-tint: #d9e6ff;
+  --border: #949494;
+  --border-field: #666666;
+  --border-disabled: #b3b3b3;
+  --link: #00118f;
+  --link-hover: #0017c1;
+  --link-visited: #8b008b;
+  --link-active: #c74700;
+  --focus-ring: #ffd43d;
+  --focus-outline: #000000;
+  --success: #259d63;
+  --success-strong: #197a4b;
+  --error: #ec0000;
+  --error-strong: #ce0000;
+  --warning: #b78f00;
+  --warning-strong: #927200;
+
+  --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Noto Sans Mono', monospace;
+
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-64: 64px;
+
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-24: 24px;
+  --radius-full: 9999px;
+
+  --elevation-4: 0 6px 20px 4px rgba(0,0,0,0.1), 0 2px 6px 0 rgba(0,0,0,0.3);
+
+  /* ---- 画面固有（デザインシステムに未登録） ---- */
+  /* 面を区切るだけの装飾線。意味を持つ枠は --border を使う */
+  --divider: #e6e6e6;
+}
+
+/* ---------- 共通 ---------- */
+.app {
+  box-sizing: border-box;
+  min-height: 100%;
+  background: var(--surface-subtle);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+}
+.app *, .app *::before, .app *::after { box-sizing: border-box; }
+.app--white { background: var(--surface); }
+.app p { margin: 0; }
+.app-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.ic {
+  width: 20px; height: 20px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.ic--lg { width: 28px; height: 28px; }
+.ic--xl { width: 40px; height: 40px; }
+.app-muted { color: var(--text-muted); }
+.app-strong { color: var(--text-strong); font-weight: 700; }
+
+/* ---------- ヘッダー・フッター ---------- */
+.app-header { background: var(--surface); border-bottom: 1px solid var(--divider); }
+.app-header__inner {
+  max-width: 1200px; margin: 0 auto; padding: 0 var(--space-24);
+  min-height: 72px; display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-16); flex-wrap: wrap;
+}
+.app-brand {
+  color: var(--text-strong); text-decoration: none;
+  font-size: 1.25rem; font-weight: 700; line-height: 1.5; letter-spacing: 0.02em;
+}
+.app-brand:focus-visible { outline: 4px solid var(--focus-outline); outline-offset: 2px; background: var(--focus-ring); border-radius: var(--radius-4); }
+.app-nav { display: flex; align-items: center; gap: var(--space-24); flex-wrap: wrap; }
+
+.app-footer { background: var(--surface); border-top: 1px solid var(--divider); }
+.app-footer__inner {
+  max-width: 1200px; margin: 0 auto; padding: var(--space-40) var(--space-24);
+  display: flex; flex-wrap: wrap; gap: var(--space-16) var(--space-40); justify-content: space-between; align-items: center;
+}
+.app-footer__links { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); }
+
+/* ---------- レイアウト ---------- */
+.app-main { max-width: 1200px; margin: 0 auto; padding: var(--space-40) var(--space-24) var(--space-64); }
+.app-narrow { max-width: 760px; margin: 0 auto; }
+.app-stack { display: grid; gap: var(--space-24); }
+
+/* ---------- ステップ表示 ---------- */
+.app-progress { display: grid; gap: var(--space-16); margin-bottom: var(--space-40); }
+.app-progress__count { font-size: 1rem; font-weight: 700; color: var(--text-muted); }
+.app-steps { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
+.app-step {
+  position: relative; flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-8);
+  text-align: center; font-size: 0.875rem; line-height: 1.5; color: var(--text-muted);
+}
+.app-step + .app-step::before {
+  content: ""; position: absolute; top: 17px; left: calc(-50% + 26px); right: calc(50% + 26px);
+  height: 2px; background: var(--divider);
+}
+.app-step[data-state="done"]::before,
+.app-step[data-state="current"]::before { background: var(--key); }
+.app-step__dot {
+  position: relative; z-index: 1;
+  width: 36px; height: 36px; border-radius: var(--radius-full);
+  display: grid; place-items: center;
+  border: 2px solid var(--border); background: var(--surface);
+  color: var(--text-muted); font-size: 1rem; font-weight: 700; line-height: 1;
+}
+.app-step[data-state="done"] { color: var(--text-body); }
+.app-step[data-state="done"] .app-step__dot { border-color: var(--key); color: var(--key); }
+.app-step[data-state="current"] { color: var(--text-strong); font-weight: 700; }
+.app-step[data-state="current"] .app-step__dot {
+  border-color: var(--key); background: var(--key); color: var(--text-on-key);
+  box-shadow: 0 0 0 4px var(--key-tint);
+}
+
+/* スマートフォン用の簡略ステップ表示 */
+.app-mstep { display: grid; gap: var(--space-8); }
+.app-mstep__row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-8); }
+.app-mstep__title { font-size: 1.125rem; font-weight: 700; color: var(--text-strong); }
+.app-mstep__count { font-size: 0.875rem; font-weight: 700; color: var(--text-muted); }
+.app-mstep__bar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.app-mstep__bar span { height: 6px; border-radius: var(--radius-full); background: var(--divider); }
+.app-mstep__bar span[data-on="true"] { background: var(--key); }
+.app-mstep__next { font-size: 0.875rem; color: var(--text-muted); }
+
+/* ---------- フォームカード ---------- */
+.app-card {
+  background: var(--surface); border: 1px solid var(--divider);
+  border-radius: var(--radius-16); padding: var(--space-40);
+}
+.app-card__head { display: grid; gap: var(--space-8); margin-bottom: var(--space-40); }
+.app-title { margin: 0; color: var(--text-strong); font-size: 1.75rem; font-weight: 700; line-height: 1.5; letter-spacing: 0.01em; }
+.app-lead { color: var(--text-body); }
+.app-form { display: grid; gap: var(--space-32); }
+.app-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-24); }
+.app-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: var(--space-16); }
+.app-fieldset > legend { padding: 0; margin-bottom: var(--space-8); font-weight: 700; color: var(--text-strong); }
+.app-optional { margin-left: var(--space-8); color: var(--text-muted); font-size: 0.875rem; font-weight: normal; }
+.app-inline { display: flex; align-items: center; gap: var(--space-8); flex-wrap: wrap; }
+.app-unit { color: var(--text-body); }
+.bb-input.w-year { width: 112px; }
+.bb-input.w-2 { width: 80px; }
+.bb-input.w-postal { width: 184px; }
+.bb-input.w-tel { width: 280px; }
+.bb-input.w-full { width: 100%; }
+.app-select { position: relative; display: inline-block; max-width: 100%; }
+.app-select > select.bb-input { appearance: none; -webkit-appearance: none; padding-right: 44px; line-height: 1.2; }
+.app-select > .ic { position: absolute; right: 14px; top: 50%; translate: 0 -50%; pointer-events: none; color: var(--text-body); }
+textarea.bb-input { height: auto; min-height: 200px; width: 100%; line-height: 1.7; resize: vertical; font-family: var(--font-sans); }
+.app-counter { display: flex; justify-content: space-between; gap: var(--space-16); color: var(--text-muted); }
+
+.app-error {
+  display: flex; align-items: flex-start; gap: var(--space-8);
+  color: var(--error); font-weight: 700;
+}
+.app-error .ic { margin-top: 3px; }
+
+/* ---------- 学歴・職歴・資格の行カード ---------- */
+.app-entries { display: grid; gap: var(--space-24); }
+.app-entry { border: 1px solid var(--divider); border-radius: var(--radius-12); overflow: hidden; background: var(--surface); }
+.app-entry__head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-16);
+  padding: var(--space-8) var(--space-12) var(--space-8) var(--space-24);
+  background: var(--surface-subtle); border-bottom: 1px solid var(--divider);
+}
+.app-entry__title { margin: 0; color: var(--text-strong); font-size: 1.125rem; font-weight: 700; line-height: 1.6; }
+.app-entry__body { padding: var(--space-24); display: grid; gap: var(--space-24); }
+.bb-button.app-add { width: 100%; }
+.app-hint { display: flex; gap: var(--space-8); align-items: flex-start; color: var(--text-muted); }
+.app-hint .ic { margin-top: 3px; }
+
+/* ---------- 操作ボタンの並び ---------- */
+.app-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap;
+  margin-top: var(--space-40); padding-top: var(--space-32); border-top: 1px solid var(--divider);
+}
+
+/* ---------- 端末内だけに保持していることの表示 ---------- */
+.app-local {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap;
+  margin-top: var(--space-24); padding: var(--space-16) var(--space-24);
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-12);
+}
+.app-local__text { display: flex; align-items: flex-start; gap: var(--space-12); flex: 1 1 360px; color: var(--text-body); }
+.app-local__text .ic { margin-top: 3px; color: var(--key); }
+
+/* ---------- トップページ ---------- */
+.app-hero-band {
+  background-color: var(--surface);
+  background-image: radial-gradient(var(--key-tint) 1px, transparent 1.4px);
+  background-size: 24px 24px;
+  border-bottom: 1px solid var(--divider);
+}
+.app-hero {
+  max-width: 1200px; margin: 0 auto; padding: 96px var(--space-24) 88px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: var(--space-64); align-items: center;
+}
+.app-display { margin: 0; color: var(--text-strong); font-size: clamp(2.25rem, 4.6vw, 3.5625rem); font-weight: 700; line-height: 1.4; letter-spacing: 0; }
+.app-hero__sub { margin-top: var(--space-24); font-size: 1.0625rem; line-height: 1.8; }
+.app-cta-row { margin-top: var(--space-40); display: flex; align-items: center; gap: var(--space-16) var(--space-32); flex-wrap: wrap; }
+.app-hero__meta { margin-top: var(--space-24); display: flex; gap: var(--space-8) var(--space-24); flex-wrap: wrap; color: var(--text-muted); }
+.app-hero__meta span { display: inline-flex; align-items: center; gap: var(--space-8); }
+
+.app-flow {
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-24);
+  padding: var(--space-32); display: grid; gap: var(--space-16);
+}
+.app-flow__form { border: 1px solid var(--divider); border-radius: var(--radius-12); padding: var(--space-24); display: grid; gap: var(--space-12); }
+.app-flow__label { font-size: 0.875rem; font-weight: 700; color: var(--text-muted); }
+.app-skel { display: grid; gap: 6px; }
+.app-skel i { display: block; height: 10px; border-radius: var(--radius-full); background: var(--gray-100); }
+.app-skel b { display: block; height: 36px; border-radius: var(--radius-8); border: 1px solid var(--divider); }
+.app-flow__arrow { justify-self: center; color: var(--key); }
+.app-files { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-12); }
+.app-file {
+  border: 1px solid var(--divider); border-radius: var(--radius-12); padding: var(--space-16);
+  display: grid; gap: var(--space-4); justify-items: start;
+}
+.app-file__type { font-weight: 700; color: var(--key); display: inline-flex; align-items: center; gap: var(--space-8); }
+.app-file__desc { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; }
+
+.app-section { max-width: 1200px; margin: 0 auto; padding: var(--space-64) var(--space-24); }
+.app-section + .app-section { border-top: 1px solid var(--divider); }
+.app-section__head { display: grid; gap: var(--space-8); margin-bottom: var(--space-40); max-width: 720px; }
+.app-h2 { margin: 0; color: var(--text-strong); font-size: 1.75rem; font-weight: 700; line-height: 1.5; letter-spacing: 0.01em; }
+.app-h3 { margin: 0; color: var(--text-strong); font-size: 1.25rem; font-weight: 700; line-height: 1.5; }
+
+.app-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--space-24); }
+.app-feature {
+  background: var(--surface); border: 1px solid var(--divider); border-radius: var(--radius-16);
+  padding: var(--space-32); display: grid; gap: var(--space-12); align-content: start;
+}
+.app-feature__icon {
+  width: 52px; height: 52px; border-radius: var(--radius-12);
+  background: var(--surface-key); color: var(--key); display: grid; place-items: center;
+  margin-bottom: var(--space-8);
+}
+.app-feature__kicker { color: var(--key); font-weight: 700; }
+
+.app-howto { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: var(--space-24); }
+.app-howto li { display: grid; grid-template-columns: 48px 1fr; gap: var(--space-16); align-items: start; }
+.app-howto__num {
+  width: 48px; height: 48px; border-radius: var(--radius-full); border: 2px solid var(--key);
+  color: var(--key); font-weight: 700; font-size: 1.25rem; display: grid; place-items: center;
+}
+
+.app-policy { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr)); gap: var(--space-40); align-items: start; }
+.app-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-16); }
+.app-checks li { display: flex; gap: var(--space-12); align-items: flex-start; }
+.app-checks .ic { color: var(--success-strong); margin-top: 3px; }
+
+.app-callout {
+  background: var(--surface-key); border-radius: var(--radius-16); padding: var(--space-32) var(--space-40);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-24); flex-wrap: wrap;
+}
+
+.app-ad {
+  border: 1px dashed var(--border); border-radius: var(--radius-8); background: var(--surface);
+  min-height: 120px; display: grid; place-items: center; text-align: center; gap: var(--space-4);
+  color: var(--text-muted); padding: var(--space-16);
+}
+.app-ad__label { font-size: 0.875rem; font-weight: 700; }
+
+/* ---------- 確認画面 ---------- */
+.app-review { display: grid; gap: var(--space-24); }
+.app-review__section { border: 1px solid var(--divider); border-radius: var(--radius-12); overflow: hidden; background: var(--surface); }
+.app-dl { margin: 0; }
+.app-dl__row { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-24); padding: var(--space-16) var(--space-24); }
+.app-dl__row + .app-dl__row { border-top: 1px solid var(--divider); }
+.app-dl dt { flex: 0 0 168px; color: var(--text-muted); font-weight: 700; }
+.app-dl dd { flex: 1 1 260px; margin: 0; color: var(--text-strong); white-space: pre-line; }
+.app-hist { list-style: none; margin: 0; padding: 0; }
+.app-hist li { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-24); padding: var(--space-12) var(--space-24); }
+.app-hist li + li { border-top: 1px solid var(--divider); }
+.app-hist__date { flex: 0 0 120px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.app-hist__text { flex: 1 1 260px; color: var(--text-strong); }
+
+/* ---------- 完了画面 ---------- */
+.app-done { text-align: center; display: grid; gap: var(--space-16); justify-items: center; }
+.app-done__mark {
+  width: 72px; height: 72px; border-radius: var(--radius-full);
+  background: var(--success-strong); color: var(--white); display: grid; place-items: center;
+}
+.app-done__mark .ic { width: 36px; height: 36px; stroke-width: 2.5; }
+.app-downloads { display: grid; gap: var(--space-16); width: 100%; max-width: 480px; margin: var(--space-40) auto 0; }
+.app-downloads .bb-button { width: 100%; }
+.app-dlnote { text-align: center; color: var(--text-muted); font-size: 0.875rem; margin-top: calc(var(--space-8) * -1); }
+.app-next { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-16); counter-reset: n; }
+.app-next li { display: grid; grid-template-columns: 32px 1fr; gap: var(--space-12); align-items: start; counter-increment: n; }
+.app-next li::before {
+  content: counter(n); width: 32px; height: 32px; border-radius: var(--radius-full);
+  background: var(--surface-key); color: var(--key); font-weight: 700; display: grid; place-items: center;
+}
+
+/* ---------- PDF取り込み ---------- */
+.app-drop {
+  border: 2px dashed var(--border-field); border-radius: var(--radius-16); background: var(--surface);
+  padding: var(--space-40) var(--space-24); display: grid; justify-items: center; gap: var(--space-16); text-align: center;
+}
+.app-drop__icon { width: 64px; height: 64px; border-radius: var(--radius-full); background: var(--surface-key); color: var(--key); display: grid; place-items: center; }
+.app-filechip {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap;
+  border: 1px solid var(--divider); border-radius: var(--radius-12); padding: var(--space-12) var(--space-12) var(--space-12) var(--space-24);
+}
+
+/* ---------- 画面の土台 ---------- */
+html, body, #root { min-height: 100%; }
+body { background: var(--surface-subtle); }
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+.app > main { flex: 1 0 auto; }
+.app-skip {
+  position: absolute; left: var(--space-8); top: -100px; z-index: 10;
+  background: var(--surface); padding: var(--space-8) var(--space-16); border-radius: var(--radius-8);
+}
+.app-skip:focus { top: var(--space-8); }
+h1:focus, h2:focus { outline: none; }
+h1:focus-visible { outline: 4px solid var(--focus-outline); outline-offset: 2px; box-shadow: 0 0 0 2px var(--focus-ring); }
+.app-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.app-spin { animation: app-spin 1s linear infinite; }
+@keyframes app-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .app-spin { animation: none; } }
+.app-mstep { display: none; }
+
+/* select は :read-only に一致するため、デザインシステムの「読み取り専用（点線）」の見た目を打ち消す */
+select.bb-input:read-only:not(:disabled) { border-style: solid; }
+/* お知らせのアイコンは .ic（20px）より大きく表示する */
+.bb-banner__icon.ic { width: 36px; height: 36px; }
+
+/* ---------- スマートフォン（幅640px未満） ---------- */
+@media (max-width: 639px) {
+  .app-header__inner { padding: 0 var(--space-8) 0 var(--space-16); min-height: 56px; }
+  .app-nav { gap: var(--space-16); }
+  .app-main { padding: var(--space-16) var(--space-16) var(--space-40); }
+  .app-card { padding: var(--space-24) var(--space-16); border-radius: var(--radius-12); }
+  .app-card__head { margin-bottom: var(--space-24); }
+  .app-title { font-size: 1.5rem; }
+
+  /* ステップ表示は簡略版に切り替える */
+  .app-steps { display: none; }
+  .app-mstep { display: grid; }
+  .app-progress { margin-bottom: var(--space-16); }
+
+  .app-entry__head { padding-left: var(--space-16); }
+  .app-entry__body { padding: var(--space-16); gap: var(--space-16); }
+  .bb-input[data-size="md"] { height: 3.5rem; }
+  .bb-input.w-year { width: 88px; }
+  .bb-input.w-2 { width: 64px; }
+
+  /* 「戻る」「次へ」は画面下に固定する */
+  .app-actions--sticky {
+    position: sticky; bottom: 0; z-index: 5;
+    margin: var(--space-24) calc(var(--space-16) * -1) calc(var(--space-24) * -1);
+    padding: var(--space-12) var(--space-16) var(--space-16);
+    background: var(--surface); border-top: 1px solid var(--divider);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+    flex-wrap: nowrap;
+  }
+  .app-actions--sticky .bb-button { flex: 1 1 0; min-width: 0; }
+  .app-actions--sticky .bb-button[data-type="outline"] { flex: 0 0 104px; }
+
+  .app-hero { padding: var(--space-40) var(--space-16); gap: var(--space-40); }
+  .app-display { font-size: 2rem; }
+  .app-flow { padding: var(--space-16); }
+  .app-section { padding: var(--space-40) var(--space-16); }
+  .app-callout { padding: var(--space-24); }
+  .app-callout .bb-button, .app-cta-row .bb-button { width: 100%; }
+  .app-files { grid-template-columns: minmax(0, 1fr); }
+  .app-dl dt { flex-basis: 100%; }
+  .bb-banner { grid-template-columns: 24px 1fr; column-gap: var(--space-12); padding: var(--space-16); }
+  .bb-banner__icon.ic { width: 24px; height: 24px; }
+}

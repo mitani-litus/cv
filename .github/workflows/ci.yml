@@ -20,3 +20,32 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run build
+
+  # PDF生成APIの Lambda コンテナイメージをビルドし、Runtime Interface Emulator で動かして確かめる
+  api-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -f docker/api.Dockerfile -t cv-api .
+      - name: Start container (read-only filesystem)
+        run: |
+          docker run -d --name cv-api --read-only --tmpfs /tmp:size=1m \
+            -e ALLOWED_ORIGINS=http://localhost:5173 -p 8080:8080 cv-api
+          sleep 3
+      - name: Generate a PDF through the Lambda emulator
+        run: |
+          body='{"version":"1.0","createdAt":"2026-10-07","personal":{"name":"山田 太郎","nameKana":"ヤマダ タロウ","birthDate":"1985-04-01","postalCode":"100-0001","address":{"prefecture":"東京都","city":"千代田区","street":"千代田1-1","building":""},"phone":"090-1234-5678","email":"taro@example.jp"},"education":[],"employment":[],"qualifications":[],"motivation":"","selfIntroduction":"","preferences":""}'
+          event=$(jq -n --arg body "$body" '{requestContext:{requestId:"ci",http:{method:"POST"}},headers:{origin:"http://localhost:5173","content-type":"application/json"},body:$body,isBase64Encoded:false}')
+          curl -sf -X POST http://localhost:8080/2015-03-31/functions/function/invocations -d "$event" > result.json
+          test "$(jq -r .statusCode result.json)" = "200"
+          jq -r .body result.json | base64 -d > resume.pdf
+          head -c 5 resume.pdf | grep -q '%PDF-'
+          echo "PDF size: $(wc -c < resume.pdf) bytes"
+      - name: Container logs must not contain personal data
+        if: always()
+        run: |
+          docker logs cv-api > logs.txt 2>&1
+          cat logs.txt
+          ! grep -E '山田|taro@example|090-1234' logs.txt
