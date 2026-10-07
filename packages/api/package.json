@@ -1,0 +1,23 @@
+{
+  "name": "@cv/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PDF生成API（AWS Lambda）。履歴書JSONを受け取り、PDFを返す。データは保存しない",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "tsx src/local/dev-server.ts"
+  },
+  "dependencies": {
+    "@cv/core": "*",
+    "@cv/schema": "*",
+    "@expo-google-fonts/noto-sans-jp": "^0.4.4",
+    "pdfkit": "^0.20.2"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "^0.17.6",
+    "esbuild": "^0.28.2",
+    "pdfjs-dist": "^6.4.299"
+  }
+}
