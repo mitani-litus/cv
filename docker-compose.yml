@@ -1,0 +1,49 @@
+# ローカル開発環境。AWS に接続せずに、入力フォームからPDF作成まで確認できる。
+#   docker compose up --build
+#   → http://localhost:5173
+#
+# web         : 入力フォーム（Vite の開発サーバー）。/api は gateway に転送する
+# gateway     : API Gateway の代わり。HTTP リクエストを Lambda のイベントに変換する
+# api-lambda  : 本番と同じ Lambda コンテナイメージ（Runtime Interface Emulator で動かす）
+services:
+  web:
+    image: node:22-slim
+    working_dir: /app
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev"
+    environment:
+      API_PROXY_TARGET: http://gateway:9000
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - web_node_modules:/app/node_modules
+    depends_on:
+      - gateway
+
+  gateway:
+    image: node:22-slim
+    working_dir: /app
+    command: node gateway.mjs
+    environment:
+      LAMBDA_INVOKE_URL: http://api-lambda:8080/2015-03-31/functions/function/invocations
+      PORT: "9000"
+    volumes:
+      - ./packages/api/local/gateway.mjs:/app/gateway.mjs:ro
+    depends_on:
+      - api-lambda
+
+  api-lambda:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      args:
+        LAMBDA_BASE_IMAGE: ${LAMBDA_BASE_IMAGE:-public.ecr.aws/lambda/nodejs:22}
+    environment:
+      ALLOWED_ORIGINS: http://localhost:5173
+    # PDFの作成でファイルを書かないことを確かめるため、読み取り専用で動かす
+    read_only: true
+    tmpfs:
+      - /tmp:size=1m
+
+volumes:
+  web_node_modules:
