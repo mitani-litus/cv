@@ -33,13 +33,22 @@ export const CSV_HEADERS = [
 const FORMULA_PREFIX = /^[=+\-@\t\r]/;
 
 /**
+ * 国際形式の電話番号（例: +81-90-1234-5678）。数字と + - ( ) 空白だけで、関数や外部参照を書けないため、
+ * 電話番号の列ではこの形の値に ' を付けない（表示形式は受け取った側に任せる）。
+ */
+const SAFE_PHONE = /^\+?[0-9() -]+$/;
+const PHONE_COLUMN = CSV_HEADERS.indexOf('電話番号');
+
+/**
  * 1セル分の値をCSV用に変換する。
  * - 数式として解釈される文字で始まる値は、先頭に ' を付けて文字列として扱わせる
+ *   （allowLeadingPlus のときは、+ で始まる電話番号の形の値だけはそのまま出力する）
  * - セル内の改行は LF にそろえる（Excel のセル内改行）
  * - カンマ・ダブルクォート・改行を含む値はダブルクォートで囲む
  */
-export function escapeCsvCell(value: string): string {
-  let v = FORMULA_PREFIX.test(value) ? `'${value}` : value;
+export function escapeCsvCell(value: string, options: { allowLeadingPlus?: boolean } = {}): string {
+  const plusAllowed = options.allowLeadingPlus === true && value.startsWith('+') && SAFE_PHONE.test(value);
+  let v = FORMULA_PREFIX.test(value) && !plusAllowed ? `'${value}` : value;
   v = v.replace(/\r\n?/g, '\n');
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
@@ -77,5 +86,5 @@ export function toCsvRow(resume: Resume): string[] {
  */
 export function toCsv(resumes: Resume | Resume[]): string {
   const rows = [Array.from(CSV_HEADERS), ...[resumes].flat().map(toCsvRow)];
-  return BOM + rows.map((row) => row.map(escapeCsvCell).join(',')).join(ROW_SEPARATOR) + ROW_SEPARATOR;
+  return BOM + rows.map((row) => row.map((cell, i) => escapeCsvCell(cell, { allowLeadingPlus: i === PHONE_COLUMN })).join(',')).join(ROW_SEPARATOR) + ROW_SEPARATOR;
 }
