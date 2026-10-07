@@ -1,4 +1,4 @@
-import { describeEducation, formatDateJa } from '@cv/core';
+import { formatDateJa } from '@cv/core';
 import type { Resume } from '@cv/schema';
 import { useRef, useState, type DragEvent } from 'react';
 import { Icon } from '../components/Icon';
@@ -130,10 +130,6 @@ export function ImportPage() {
                       <div className="app-dl__row">
                         <dt>電話番号</dt>
                         <dd>{result.resume.personal.phone}</dd>
-                      </div>
-                      <div className="app-dl__row">
-                        <dt>最終学歴</dt>
-                        <dd>{result.resume.education.length > 0 ? describeEducation(result.resume.education.at(-1)!) : '入力なし'}</dd>
                       </div>
                       <div className="app-dl__row">
                         <dt>学歴・職歴・資格</dt>
