@@ -9,9 +9,19 @@ import {
   isCurrentlyEmployed,
 } from '@cv/core';
 import type { Resume } from '@cv/schema';
+import { create as openFont } from 'fontkit';
 import PDFDocument from 'pdfkit';
-import type { FontBytes } from '../fonts';
 import { wrapText, type MeasureText } from './text';
+
+/**
+ * PDFに埋め込むフォント（Noto Sans JP）。TTF を渡すこと
+ * （WOFF2 だと必要な文字だけを取り出せず、フォント全体が埋め込まれて PDF が数十MBになる）。
+ * bold を省くと、太字の箇所も regular で描く（ブラウザでは読み込む量を減らすため regular だけを使う）。
+ */
+export interface PdfFonts {
+  regular: Uint8Array;
+  bold?: Uint8Array | undefined;
+}
 
 /** PDFに添付する履歴書JSONのファイル名（packages/web の取り込み画面と合わせる） */
 export const EMBEDDED_JSON_NAME = 'resume.json';
@@ -309,33 +319,48 @@ function entryLines<T extends { year: number | null; month: number | null }>(ite
     .filter((r) => r.year !== '' || r.month !== '' || r.text !== '');
 }
 
-function toBuffer(doc: Doc): Promise<Buffer> {
+function toBytes(doc: Doc): Promise<Uint8Array> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    const chunks: Uint8Array[] = [];
+    doc.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+    doc.on('end', () => {
+      const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+      let offset = 0;
+      for (const c of chunks) {
+        out.set(c, offset);
+        offset += c.length;
+      }
+      resolve(out);
+    });
     doc.on('error', reject);
   });
 }
 
 /**
- * 履歴書PDFを作る（A4・2ページの固定様式）。
+ * 履歴書PDFを作る（A4・2ページの固定様式）。ブラウザでも Node.js（Lambda）でも動く。
  * 履歴書JSONを添付ファイル（resume.json）として埋め込み、取り込み画面でCSVにできるようにする。
  * 処理はすべてメモリ上で行い、ファイルには書き出さない。
  */
-export async function renderResumePdf(resume: Resume, fonts: FontBytes, now = new Date()): Promise<Buffer> {
+export async function renderResumePdf(resume: Resume, fonts: PdfFonts, now = new Date()): Promise<Uint8Array> {
+  // フォントは一度だけ解析して使い回す
+  // fontkit の型定義は Node.js の Buffer を求めるが、Uint8Array で動く
+  type FontSource = Parameters<typeof openFont>[0];
+  const regular = openFont(fonts.regular as FontSource);
+  const bold = fonts.bold ? openFont(fonts.bold as FontSource) : regular;
   const doc = new PDFDocument({
     size: 'A4',
     margin: 0,
     lang: 'ja-JP',
+    // 既定のフォント（Helvetica）は使わない。ブラウザ版には含まれないため
+    font: regular as unknown as string,
     // 文書情報には個人情報を入れない
     info: { Title: '履歴書', Creator: '履歴書データ化（cv）', Producer: 'PDFKit', CreationDate: now, ModDate: now },
     displayTitle: true,
   });
-  const output = toBuffer(doc);
+  const output = toBytes(doc);
   // 使った文字だけを埋め込む（サブセット化）
-  doc.registerFont('regular', Buffer.from(fonts.regular));
-  doc.registerFont('bold', Buffer.from(fonts.bold));
+  doc.registerFont('regular', regular as unknown as string);
+  doc.registerFont('bold', bold as unknown as string);
   const w = new Writer(doc);
 
   // ---------- 1ページ目 ----------
@@ -389,7 +414,7 @@ export async function renderResumePdf(resume: Resume, fonts: FontBytes, now = ne
   ]);
 
   // 取り込み用の履歴書JSON
-  doc.file(Buffer.from(JSON.stringify(resume), 'utf8'), {
+  doc.file(new TextEncoder().encode(JSON.stringify(resume)) as unknown as string, {
     name: EMBEDDED_JSON_NAME,
     type: 'application/json',
     description: '履歴書データ（JSON）',
