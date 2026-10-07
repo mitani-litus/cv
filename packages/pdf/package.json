@@ -17,6 +17,7 @@
   "devDependencies": {
     "@expo-google-fonts/noto-sans-jp": "^0.4.4",
     "@types/fontkit": "^2.0.9",
-    "@types/pdfkit": "^0.17.6"
+    "@types/pdfkit": "^0.17.6",
+    "pdfjs-dist": "^6.4.299"
   }
 }
