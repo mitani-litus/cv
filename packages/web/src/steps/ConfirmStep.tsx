@@ -1,13 +1,15 @@
 import {
   calcAge,
   CURRENTLY_EMPLOYED_TEXT,
-  isCurrentlyEmployed,
-  describeEducation,
-  describeEmployment,
   describeQualification,
+  educationLines,
+  employmentLines,
   formatAddress,
   formatDateJa,
+  formatName,
   formatYearMonthJa,
+  isCurrentlyEmployed,
+  type HistoryLine,
 } from '@cv/core';
 import type { Resume } from '@cv/schema';
 import type { ReactNode } from 'react';
@@ -68,6 +70,10 @@ function History({ items }: { items: { date: string; text: string }[] }) {
   );
 }
 
+function toItem(line: HistoryLine) {
+  return { date: formatYearMonthJa(line.year, line.month), text: line.text };
+}
+
 export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
   const p = resume.personal;
   const age = calcAge(p.birthDate, resume.createdAt);
@@ -91,7 +97,8 @@ export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
 
       <Section title="基本情報" step="basic" onEdit={onEdit}>
         <dl className="app-dl">
-          <Row label="氏名" value={p.nameKana ? `${p.name}（${p.nameKana}）` : p.name} />
+          <Row label="氏名" value={formatName(p.familyName, p.givenName)} />
+          <Row label="フリガナ" value={formatName(p.familyNameKana, p.givenNameKana)} />
           <Row label="生年月日" value={birth} />
           {resume.layout.genderField && <Row label="性別" value={p.gender} />}
           <Row label="住所" value={address} />
@@ -103,13 +110,13 @@ export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
       </Section>
 
       <Section title="学歴" step="education" onEdit={onEdit}>
-        <History items={resume.education.map((e) => ({ date: formatYearMonthJa(e.year, e.month), text: describeEducation(e) }))} />
+        <History items={resume.education.flatMap(educationLines).map(toItem)} />
       </Section>
 
       <Section title="職歴" step="employment" onEdit={onEdit}>
         <History
           items={[
-            ...resume.employment.map((e) => ({ date: formatYearMonthJa(e.year, e.month), text: describeEmployment(e) })),
+            ...resume.employment.flatMap(employmentLines).map(toItem),
             ...(isCurrentlyEmployed(resume.employment) ? [{ date: '', text: CURRENTLY_EMPLOYED_TEXT }] : []),
           ]}
         />

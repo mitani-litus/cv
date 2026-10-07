@@ -1,4 +1,4 @@
-import { formatDateJa } from '@cv/core';
+import { formatDateJa, formatName } from '@cv/core';
 import type { Resume } from '@cv/schema';
 import { useRef, useState, type DragEvent } from 'react';
 import { Icon } from '../components/Icon';
@@ -116,8 +116,13 @@ export function ImportPage() {
                       <div className="app-dl__row">
                         <dt>氏名</dt>
                         <dd>
-                          {result.resume.personal.name}（{result.resume.personal.nameKana}）
+                          {formatName(result.resume.personal.familyName, result.resume.personal.givenName)}（
+                          {formatName(result.resume.personal.familyNameKana, result.resume.personal.givenNameKana)}）
                         </dd>
+                      </div>
+                      <div className="app-dl__row">
+                        <dt>応募者ID</dt>
+                        <dd>{result.resume.id}</dd>
                       </div>
                       <div className="app-dl__row">
                         <dt>履歴書の日付</dt>
@@ -147,6 +152,9 @@ export function ImportPage() {
                       JSONをダウンロード
                     </button>
                   </div>
+                  <p className="app-dlnote" style={{ textAlign: 'left' }}>
+                    CSVは、基本情報（resume.csv）・学歴（education.csv）・職歴（work.csv）の3つのファイルを1つのZIPにまとめています。3つのファイルは、先頭列の「応募者ID」で紐づきます。
+                  </p>
                 </>
               )}
 

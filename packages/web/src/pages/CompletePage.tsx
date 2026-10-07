@@ -39,7 +39,7 @@ export function CompletePage({ resume, pdf }: { resume: Resume; pdf: Blob }) {
                 <Icon name="download" />
                 CSVをダウンロード
               </button>
-              <p className="app-dlnote">履歴書データ（CSV）— PDFと一緒に採用担当者に送る</p>
+              <p className="app-dlnote">履歴書データ（CSV 3ファイルをまとめたZIP）— PDFと一緒に採用担当者に送る</p>
               <button className="bb-button" data-type="text" data-size="md" type="button" style={{ justifySelf: 'center' }} onClick={() => downloadJson(resume)}>
                 JSONをダウンロード（入力データの保存用）
               </button>

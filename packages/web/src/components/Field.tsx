@@ -141,6 +141,8 @@ interface SelectFieldProps<T extends string> {
   width?: number | string;
   autoComplete?: string;
   plainLabel?: boolean;
+  optional?: boolean;
+  support?: string;
 }
 
 export function SelectField<T extends string>(props: SelectFieldProps<T>) {
@@ -148,11 +150,18 @@ export function SelectField<T extends string>(props: SelectFieldProps<T>) {
   const id = fieldId(path);
   const error = useFieldError(path);
   const errorId = error ? `${id}-error` : undefined;
+  const supportId = props.support ? `${id}-support` : undefined;
   return (
     <div className="bb-field">
       <label className="bb-field__label" htmlFor={id} style={props.plainLabel ? { fontWeight: 'normal' } : undefined}>
         {label}
+        {props.optional && <span className="app-optional">任意</span>}
       </label>
+      {props.support && (
+        <span className="bb-field__support" id={supportId}>
+          {props.support}
+        </span>
+      )}
       <span className="app-select" style={{ width }}>
         <select
           className="bb-input w-full"
@@ -162,7 +171,7 @@ export function SelectField<T extends string>(props: SelectFieldProps<T>) {
           autoComplete={props.autoComplete}
           onChange={(e) => onChange(e.target.value as T | '')}
           aria-invalid={error ? true : undefined}
-          aria-describedby={errorId}
+          aria-describedby={describedBy(supportId, errorId)}
         >
           <option value="">{placeholder}</option>
           {options.map((o) => (

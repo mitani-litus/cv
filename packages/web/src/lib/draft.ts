@@ -3,12 +3,15 @@ import {
   createEmptyEmployment,
   createEmptyQualification,
   createEmptyResume,
-  EDUCATION_CATEGORIES,
-  EMPLOYMENT_CATEGORIES,
+  EDUCATION_STATUSES,
+  GENDERS,
   LIMITS,
+  migrateResume,
   PREFECTURES,
   type Resume,
 } from '@cv/schema';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** 今日の日付（端末の時刻、YYYY-MM-DD） */
 export function today(): string {
@@ -39,6 +42,11 @@ function bool(v: unknown, fallback: boolean): boolean {
   return typeof v === 'boolean' ? v : fallback;
 }
 
+function yearMonth(v: unknown) {
+  const o = obj(v);
+  return { year: int(o.year), month: int(o.month) };
+}
+
 function list(v: unknown): Obj[] {
   return Array.isArray(v) ? v.slice(0, LIMITS.entries).map(obj) : [];
 }
@@ -47,13 +55,15 @@ function list(v: unknown): Obj[] {
  * 保存したJSONを、入力途中のデータとして読み込む。
  * 入力途中で保存したものは必須項目が空のこともあるため、入力チェックはせず、
  * 形が合う値だけを取り出す（想定外の項目は捨てる）。内容のチェックは各ステップで行う。
+ * 以前の形式（version 1.0）のJSONは、今の形式に変換してから取り出す。応募者IDは引き継ぐ。
  */
 export function coerceDraft(input: unknown, fallbackCreatedAt: string): Resume {
-  const root = obj(input);
+  const root = obj(migrateResume(input));
   const p = obj(root.personal);
   const a = obj(p.address);
   const layout = obj(root.layout);
-  const base = createEmptyResume(str(root.createdAt) || fallbackCreatedAt);
+  const id = str(root.id);
+  const base = createEmptyResume(str(root.createdAt) || fallbackCreatedAt, ...(UUID.test(id) ? [id] : []));
   return {
     ...base,
     layout: {
@@ -61,10 +71,12 @@ export function coerceDraft(input: unknown, fallbackCreatedAt: string): Resume {
       genderField: bool(layout.genderField, base.layout.genderField),
     },
     personal: {
-      name: str(p.name),
-      nameKana: str(p.nameKana),
+      familyName: str(p.familyName),
+      givenName: str(p.givenName),
+      familyNameKana: str(p.familyNameKana),
+      givenNameKana: str(p.givenNameKana),
       birthDate: str(p.birthDate),
-      gender: str(p.gender),
+      gender: oneOf(p.gender, GENDERS),
       postalCode: str(p.postalCode),
       address: {
         prefecture: oneOf(a.prefecture, PREFECTURES),
@@ -77,21 +89,21 @@ export function coerceDraft(input: unknown, fallbackCreatedAt: string): Resume {
     },
     education: list(root.education).map((e) => ({
       ...createEmptyEducation(),
-      year: int(e.year),
-      month: int(e.month),
-      category: oneOf(e.category, EDUCATION_CATEGORIES),
       school: str(e.school),
       department: str(e.department),
+      degree: str(e.degree),
+      start: yearMonth(e.start),
+      end: yearMonth(e.end),
+      status: oneOf(e.status, EDUCATION_STATUSES),
       note: str(e.note),
     })),
     employment: list(root.employment).map((e) => ({
       ...createEmptyEmployment(),
-      year: int(e.year),
-      month: int(e.month),
-      category: oneOf(e.category, EMPLOYMENT_CATEGORIES),
       company: str(e.company),
       department: str(e.department),
       position: str(e.position),
+      start: yearMonth(e.start),
+      end: yearMonth(e.end),
       note: str(e.note),
     })),
     qualifications: list(root.qualifications).map((q) => ({
@@ -119,6 +131,6 @@ export async function readDraftFile(file: File, fallbackCreatedAt: string): Prom
 
 /** 何か入力されているか（ページを離れるときの確認に使う）。様式の選択だけなら入力とみなさない */
 export function hasInput(resume: Resume): boolean {
-  const empty = createEmptyResume(resume.createdAt);
+  const empty = createEmptyResume(resume.createdAt, resume.id);
   return JSON.stringify({ ...resume, layout: empty.layout }) !== JSON.stringify(empty);
 }
