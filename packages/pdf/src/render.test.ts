@@ -63,6 +63,14 @@ describe('renderResumePdf', () => {
     });
   });
 
+  it('ミドルネームは在留カードと同じく「姓 名 ミドルネーム」の順に記載する', async () => {
+    const r = resume();
+    r.personal = { ...r.personal, familyName: 'SMITH', givenName: 'JOHN', middleName: 'MICHAEL', familyNameKana: 'スミス', givenNameKana: 'ジョン', middleNameKana: 'マイケル' };
+    const text = await firstPageText(await renderResumePdf(r, { regular }));
+    expect(text).toContain('SMITH JOHN MICHAEL');
+    expect(text).toContain('スミス ジョン マイケル');
+  });
+
   it('氏名は姓と名を空白でつなぎ、学歴・職歴は1件を入学・卒業、入社・退職の行にする', async () => {
     const r = resume();
     r.education = [{ ...createEmptyEducation(), school: '工学院大学', start: { year: 2000, month: 4 }, end: { year: 2004, month: 3 }, status: '卒業' }];
