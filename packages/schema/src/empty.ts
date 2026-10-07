@@ -1,4 +1,4 @@
-import { RESUME_VERSION } from './constants';
+import { DEFAULT_LAYOUT, RESUME_VERSION } from './constants';
 import type { EducationEntry, EmploymentEntry, QualificationEntry, Resume } from './resume';
 
 /** 入力前の空の履歴書。createdAt は「履歴書の日付」の初期値（通常は当日、YYYY-MM-DD）。 */
@@ -6,10 +6,12 @@ export function createEmptyResume(createdAt: string): Resume {
   return {
     version: RESUME_VERSION,
     createdAt,
+    layout: { ...DEFAULT_LAYOUT },
     personal: {
       name: '',
       nameKana: '',
       birthDate: '',
+      gender: '',
       postalCode: '',
       address: { prefecture: '', city: '', street: '', building: '' },
       phone: '',

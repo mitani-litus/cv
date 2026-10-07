@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  DEFAULT_LAYOUT,
   EDUCATION_CATEGORIES,
   EMPLOYMENT_CATEGORIES,
   LIMITS,
@@ -114,6 +115,8 @@ const personal = z.strictObject({
   birthDate: z.string().refine((v) => v === '' || isValidIsoDate(v), {
     error: '生年月日は正しい日付で入力してください。',
   }),
+  // 性別は任意（記載しなくてよい）。自由記述。後から追加した項目なので、ない場合は空にする
+  gender: line(LIMITS.gender).default(''),
   postalCode: z.string().refine((v) => v === '' || POSTAL_CODE.test(v), {
     error: '郵便番号は7桁の数字で入力してください（例：100-0001）。',
   }),
@@ -139,6 +142,14 @@ const personal = z.strictObject({
   ),
 });
 
+/** PDFの様式の選択。後から追加した項目なので、ない場合は既定値にする */
+const layout = z
+  .strictObject({
+    photoBox: z.boolean({ error: '写真欄の設定が正しくありません。' }),
+    genderField: z.boolean({ error: '性別欄の設定が正しくありません。' }),
+  })
+  .default({ ...DEFAULT_LAYOUT });
+
 function entries<T extends z.ZodType>(entry: T, label: string) {
   return z.array(entry).max(LIMITS.entries, { error: `${label}は${LIMITS.entries}件まで入力できます。` });
 }
@@ -147,6 +158,7 @@ export const resumeSchema = z
   .strictObject({
     version: z.literal(RESUME_VERSION, { error: `対応していない形式です（version は ${RESUME_VERSION}）。` }),
     createdAt: z.string().refine(isValidIsoDate, { error: '履歴書の日付は正しい日付で入力してください。' }),
+    layout,
     personal,
     education: entries(educationEntry, '学歴'),
     employment: entries(employmentEntry, '職歴'),
@@ -167,6 +179,7 @@ export const resumeSchema = z
   });
 
 export type Resume = z.infer<typeof resumeSchema>;
+export type ResumeLayout = Resume['layout'];
 export type EducationEntry = Resume['education'][number];
 export type EmploymentEntry = Resume['employment'][number];
 export type QualificationEntry = Resume['qualifications'][number];

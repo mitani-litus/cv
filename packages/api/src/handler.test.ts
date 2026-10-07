@@ -19,6 +19,7 @@ function resume(): Resume {
     name: '山田 太郎',
     nameKana: 'ヤマダ タロウ',
     birthDate: '1985-04-01',
+    gender: '',
     postalCode: '100-0001',
     address: { prefecture: '東京都', city: '千代田区', street: '千代田1-1', building: '' },
     phone: '090-1234-5678',

@@ -16,6 +16,7 @@ function validResume(): Resume {
     name: '山田 太郎',
     nameKana: 'ヤマダ タロウ',
     birthDate: '1985-04-01',
+    gender: '',
     postalCode: '100-0001',
     address: { prefecture: '東京都', city: '千代田区', street: '千代田1-1', building: '' },
     phone: '090-1234-5678',
@@ -192,6 +193,43 @@ describe('validateResume', () => {
       const r = validResume();
       r.education = Array.from({ length: LIMITS.entries + 1 }, createEmptyEducation);
       expect(errorPaths(r)).toContain('education');
+    });
+  });
+
+  describe('様式の選択と性別', () => {
+    it('写真欄・性別欄の設定と性別を受け付ける', () => {
+      const r = validResume();
+      r.layout = { photoBox: false, genderField: true };
+      r.personal.gender = '女';
+      expect(validateResume(r).ok).toBe(true);
+    });
+
+    it('写真欄・性別欄の設定と性別がない、以前の形式も受け付け、既定値にする', () => {
+      const r = validResume() as unknown as Record<string, unknown> & { personal: Record<string, unknown> };
+      delete r.layout;
+      delete r.personal.gender;
+      const result = validateResume(r);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.layout).toEqual({ photoBox: true, genderField: false });
+      expect(result.value.personal.gender).toBe('');
+    });
+
+    it('性別の文字数の上限と改行をチェックする', () => {
+      const r = validResume();
+      r.personal.gender = 'あ'.repeat(LIMITS.gender + 1);
+      expect(errorPaths(r)).toContain('personal.gender');
+      r.personal.gender = '女\n性';
+      expect(errorPaths(r)).toContain('personal.gender');
+    });
+
+    it('様式の設定は真偽値だけを受け付け、想定外の項目を拒否する', () => {
+      const r = validResume() as unknown as { layout: Record<string, unknown> };
+      r.layout.photoBox = 'yes';
+      expect(errorPaths(r)).toContain('layout.photoBox');
+      const extra = validResume() as unknown as { layout: Record<string, unknown> };
+      extra.layout.photo = 'data:image/png;base64,AAAA';
+      expect(errorPaths(extra)).toContain('layout');
     });
   });
 

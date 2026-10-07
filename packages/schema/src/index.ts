@@ -1,4 +1,5 @@
 export {
+  DEFAULT_LAYOUT,
   EDUCATION_CATEGORIES,
   EMPLOYMENT_CATEGORIES,
   LIMITS,
@@ -15,6 +16,7 @@ export {
   type Prefecture,
   type QualificationEntry,
   type Resume,
+  type ResumeLayout,
 } from './resume';
 export { validateResume, type FieldError, type ValidationResult } from './validate';
 export {
