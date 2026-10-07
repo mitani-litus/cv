@@ -1,4 +1,4 @@
-# ローカル開発環境。AWS に接続せずに、入力フォームからPDF作成まで確認できる。
+# ローカル開発環境（AWS 構成の確認用）。AWS に接続せずに、入力フォームから Lambda でのPDF作成まで確認できる。
 #   docker compose up --build
 #   → http://localhost:5173
 #
@@ -12,6 +12,9 @@ services:
     command: sh -c "npm ci --no-audit --no-fund && npm run dev"
     environment:
       API_PROXY_TARGET: http://gateway:9000
+      # この構成では、本番の AWS 構成と同じくPDFをサーバー（Lambda）で作る。
+      # PDFをブラウザで作る既定の構成（GitHub Pages）を試す場合は、npm run dev だけで動く
+      VITE_PDF_API: /api/pdf
     ports:
       - "5173:5173"
     volumes:
