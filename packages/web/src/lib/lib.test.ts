@@ -69,7 +69,7 @@ describe('coerceDraft', () => {
     // 取り出した結果は、必須項目以外のチェックを通る形になっている
     const result = validateResume(draft);
     expect(result.ok ? [] : result.errors.map((e) => e.path).sort()).toEqual(
-      ['personal.email', 'personal.familyName', 'personal.familyNameKana', 'personal.givenName', 'personal.givenNameKana', 'personal.phone'].sort(),
+      ['personal.email', 'personal.givenName', 'personal.givenNameKana', 'personal.phone'].sort(),
     );
   });
 

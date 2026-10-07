@@ -63,11 +63,13 @@ describe('入力フォーム', () => {
     await user.click(next());
 
     const summary = screen.getByRole('alert');
-    expect(within(summary).getByText('入力内容に6件の誤りがあります')).toBeTruthy();
-    expect(within(summary).getByRole('link', { name: '姓を入力してください。' })).toBeTruthy();
-    const name = screen.getByLabelText(/^姓/);
+    expect(within(summary).getByText('入力内容に4件の誤りがあります')).toBeTruthy();
+    expect(within(summary).getByRole('link', { name: '名を入力してください。' })).toBeTruthy();
+    const name = screen.getByLabelText(/^名/);
     expect(name.getAttribute('aria-invalid')).toBe('true');
-    expect(name.getAttribute('aria-describedby')).toContain('f-personal-familyName-error');
+    expect(name.getAttribute('aria-describedby')).toContain('f-personal-givenName-error');
+    // 姓は任意
+    expect(screen.getByLabelText(/^姓/).getAttribute('aria-invalid')).toBeNull();
     // ステップは進まない
     expect(screen.getByRole('heading', { level: 1, name: '基本情報' })).toBeTruthy();
   });
@@ -177,6 +179,22 @@ describe('入力フォーム', () => {
     expect(vi.mocked(createPdf).mock.calls[0]![0].personal.phone).toBe('090-1234-5678');
     expect(screen.getByRole('button', { name: 'PDFをダウンロード' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'CSVをダウンロード' })).toBeTruthy();
+  });
+
+  it('姓を空欄にし、ミドルネームを入力できる（姓 名 ミドルネームの順で表示する）', async () => {
+    const user = start();
+    await user.type(screen.getByLabelText(/^名/), 'JOHN');
+    await user.type(screen.getByLabelText(/^メイ/), 'じょん');
+    await user.type(screen.getByLabelText(/^ミドルネーム任意/), 'MICHAEL');
+    await user.type(screen.getByLabelText(/^ミドルネーム（フリガナ）/), 'まいける');
+    await user.type(screen.getByLabelText(/^電話番号/), '090-1234-5678');
+    await user.type(screen.getByLabelText(/^メールアドレス/), 'john@example.jp');
+    await user.tab();
+    expect((screen.getByLabelText(/^ミドルネーム（フリガナ）/) as HTMLInputElement).value).toBe('マイケル');
+    for (let i = 0; i < 5; i++) await user.click(next());
+    const basic = within(screen.getByRole('region', { name: '基本情報' }));
+    expect(basic.getByText('氏名').nextElementSibling?.textContent).toBe('JOHN MICHAEL');
+    expect(basic.getByText('フリガナ').nextElementSibling?.textContent).toBe('ジョン マイケル');
   });
 
   it('写真欄・性別欄を選べる。性別は選択肢から選び、性別欄をやめると選んだ性別も消える', async () => {

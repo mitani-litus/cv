@@ -73,8 +73,10 @@ export function coerceDraft(input: unknown, fallbackCreatedAt: string): Resume {
     personal: {
       familyName: str(p.familyName),
       givenName: str(p.givenName),
+      middleName: str(p.middleName),
       familyNameKana: str(p.familyNameKana),
       givenNameKana: str(p.givenNameKana),
+      middleNameKana: str(p.middleNameKana),
       birthDate: str(p.birthDate),
       gender: oneOf(p.gender, GENDERS),
       postalCode: str(p.postalCode),

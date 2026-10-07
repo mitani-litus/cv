@@ -1,4 +1,4 @@
-import { formatDateJa, formatName } from '@cv/core';
+import { formatDateJa, formatName, formatNameKana } from '@cv/core';
 import type { Resume } from '@cv/schema';
 import { useRef, useState, type DragEvent } from 'react';
 import { Icon } from '../components/Icon';
@@ -116,8 +116,7 @@ export function ImportPage() {
                       <div className="app-dl__row">
                         <dt>氏名</dt>
                         <dd>
-                          {formatName(result.resume.personal.familyName, result.resume.personal.givenName)}（
-                          {formatName(result.resume.personal.familyNameKana, result.resume.personal.givenNameKana)}）
+                          {formatName(result.resume.personal)}（{formatNameKana(result.resume.personal)}）
                         </dd>
                       </div>
                       <div className="app-dl__row">
