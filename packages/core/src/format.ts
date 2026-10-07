@@ -19,9 +19,19 @@ export function formatDateJa(isoDate: string): string {
   return `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日`;
 }
 
-/** 氏名（姓と名を空白でつなぐ）。例: "山田 太郎" */
-export function formatName(familyName: string, givenName: string): string {
-  return joinWords([familyName, givenName]);
+type Personal = Resume['personal'];
+
+/**
+ * 氏名を「姓 名 ミドルネーム」の順（在留カードと同じ順）に空白でつなぐ。
+ * 例: "山田 太郎"、"SMITH JOHN MICHAEL"。空の項目は省く
+ */
+export function formatName(p: Pick<Personal, 'familyName' | 'givenName' | 'middleName'>): string {
+  return joinWords([p.familyName, p.givenName, p.middleName]);
+}
+
+/** フリガナを氏名と同じ順につなぐ。例: "スミス ジョン マイケル" */
+export function formatNameKana(p: Pick<Personal, 'familyNameKana' | 'givenNameKana' | 'middleNameKana'>): string {
+  return joinWords([p.familyNameKana, p.givenNameKana, p.middleNameKana]);
 }
 
 /** 出力する性別。性別欄を設けない様式では、入力があっても出力しない */

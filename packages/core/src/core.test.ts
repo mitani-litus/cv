@@ -17,6 +17,7 @@ import {
   formatAddress,
   formatDateJa,
   formatName,
+  formatNameKana,
   formatYearMonthIso,
   formatYearMonthJa,
   isCurrentlyEmployed,
@@ -38,6 +39,8 @@ function sampleResume(): Resume {
     givenName: '祐也',
     familyNameKana: 'ミタニ',
     givenNameKana: 'ユウヤ',
+    middleName: '',
+    middleNameKana: '',
     birthDate: '1981-10-03',
     gender: '',
     postalCode: '192-0361',
@@ -126,8 +129,11 @@ describe('整形', () => {
   it('日付・氏名', () => {
     expect(formatDateJa('1985-04-01')).toBe('1985年4月1日');
     expect(formatDateJa('')).toBe('');
-    expect(formatName('箕谷', '祐也')).toBe('箕谷 祐也');
-    expect(formatName('箕谷', '')).toBe('箕谷');
+    expect(formatName({ familyName: '箕谷', givenName: '祐也', middleName: '' })).toBe('箕谷 祐也');
+    // 在留カードと同じ「姓 名 ミドルネーム」の順。空の項目は省く
+    expect(formatName({ familyName: 'SMITH', givenName: 'JOHN', middleName: 'MICHAEL' })).toBe('SMITH JOHN MICHAEL');
+    expect(formatName({ familyName: '', givenName: 'Sukarno', middleName: '' })).toBe('Sukarno');
+    expect(formatNameKana({ familyNameKana: 'スミス', givenNameKana: 'ジョン', middleNameKana: 'マイケル' })).toBe('スミス ジョン マイケル');
   });
 
   it('住所（町名番地の後に建物名）', () => {
@@ -264,8 +270,10 @@ describe('toCsvFiles', () => {
         履歴書の日付: '2026-10-07',
         姓: '箕谷',
         名: '祐也',
+        ミドルネーム: '',
         姓カナ: 'ミタニ',
         名カナ: 'ユウヤ',
+        ミドルネームカナ: '',
         生年月日: '1981-10-03',
         性別: '',
         郵便番号: '192-0361',
@@ -304,6 +312,14 @@ describe('toCsvFiles', () => {
     r.employment = [];
     expect(parseCsv(files(r)['education.csv']!)).toHaveLength(1);
     expect(parseCsv(files(r)['work.csv']!)).toHaveLength(1);
+  });
+
+  it('ミドルネームは名の後、ミドルネームカナは名カナの後の列に出力する', () => {
+    const r = sampleResume();
+    r.personal = { ...r.personal, familyName: 'SMITH', givenName: 'JOHN', middleName: 'MICHAEL', familyNameKana: 'スミス', givenNameKana: 'ジョン', middleNameKana: 'マイケル' };
+    const row = toResumeRow(r);
+    expect(RESUME_CSV_HEADERS.slice(2, 8)).toEqual(['姓', '名', 'ミドルネーム', '姓カナ', '名カナ', 'ミドルネームカナ']);
+    expect(row.slice(2, 8)).toEqual(['SMITH', 'JOHN', 'MICHAEL', 'スミス', 'ジョン', 'マイケル']);
   });
 
   it('性別は、性別欄を設けたときだけ出力する', () => {
