@@ -43,6 +43,13 @@ describe('createPdf（ブラウザで作る：既定）', () => {
     });
   });
 
+  it('配信元が展開済みのフォントを返しても（Content-Encoding: gzip）、そのまま使う', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(FONT)));
+    const { createPdf } = await import('./pdf');
+    await createPdf(resume());
+    expect(render).toHaveBeenCalledWith(expect.anything(), { regular: FONT });
+  });
+
   it('フォントは2回目から読み込まない', async () => {
     const fetchMock = vi.fn(async () => new Response(gzipSync(FONT)));
     vi.stubGlobal('fetch', fetchMock);
