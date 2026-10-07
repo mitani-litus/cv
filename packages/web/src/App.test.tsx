@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -17,6 +17,18 @@ function start(path = '/form') {
 }
 
 const next = () => screen.getByRole('button', { name: /^次へ/ });
+
+/** 次のステップへ進み、見出しにフォーカスが移るまで待つ（移る前に入力すると、入力の途中でフォーカスが外れる） */
+async function goNext(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(next());
+  await waitFor(() => expect(document.activeElement?.id).toBe('page-title'));
+}
+
+/** 行を追加し、追加した行の最初の入力欄にフォーカスが移るまで待つ */
+async function addEntry(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name }));
+  await waitFor(() => expect(document.activeElement?.tagName).toBe('INPUT'));
+}
 
 async function fillBasic(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/^氏名/), '山田 太郎');
@@ -75,10 +87,10 @@ describe('入力フォーム', () => {
   it('学歴を追加・削除できる', async () => {
     const user = start();
     await fillBasic(user);
-    await user.click(next());
+    await goNext(user);
 
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await addEntry(user, '学歴を追加');
+    await addEntry(user, '学歴を追加');
     expect(screen.getByRole('heading', { name: '学歴 2' })).toBeTruthy();
 
     await user.type(screen.getByLabelText('学歴 1 の年（西暦）'), '２００１');
@@ -92,8 +104,8 @@ describe('入力フォーム', () => {
   it('学歴で「入学」を選ぶと、学校名を写した「卒業」の行が追加される', async () => {
     const user = start();
     await fillBasic(user);
-    await user.click(next());
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await goNext(user);
+    await addEntry(user, '学歴を追加');
     await user.type(screen.getByLabelText('学校名'), '○○高等学校');
     await user.selectOptions(screen.getByLabelText('区分'), '入学');
 
@@ -108,8 +120,8 @@ describe('入力フォーム', () => {
     const user = start();
     await fillBasic(user);
     await user.click(next());
-    await user.click(next());
-    await user.click(screen.getByRole('button', { name: '職歴を追加' }));
+    await goNext(user);
+    await addEntry(user, '職歴を追加');
     await user.type(screen.getByLabelText('会社名'), '株式会社○○');
     await user.selectOptions(screen.getByLabelText('区分'), '入社');
     expect((screen.getAllByLabelText('区分') as HTMLSelectElement[]).map((c) => c.value)).toEqual(['入社', '退職']);
@@ -124,8 +136,8 @@ describe('入力フォーム', () => {
   it('月だけ入力した行はエラーにする', async () => {
     const user = start();
     await fillBasic(user);
-    await user.click(next());
-    await user.click(screen.getByRole('button', { name: '学歴を追加' }));
+    await goNext(user);
+    await addEntry(user, '学歴を追加');
     await user.type(screen.getByLabelText('学歴 1 の月'), '4');
     await user.click(next());
     expect(within(screen.getByRole('alert')).getByText('月を入力した場合は、年も入力してください。')).toBeTruthy();
