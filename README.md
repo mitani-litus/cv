@@ -13,6 +13,7 @@
 
 - **応募者**：Webフォーム（6つのステップ）で履歴書を入力し、履歴書PDF・CSV・JSONを保存する。作成したファイルは、応募者が自分で採用担当者に送る
 - **採用担当者**：PDFだけが届いた場合に、このサービスで作成したPDFを読み込んでCSVを作る
+- **CSV**：基本情報（`resume.csv`）・学歴（`education.csv`）・職歴（`work.csv`）の3つのファイルを1つのZIPにまとめる。応募者IDで紐づくので、人事システムなどに機械的に取り込める（詳細は [`docs/design.md`](docs/design.md) の「CSVの仕様」）
 - 入力途中のデータはJSONファイルとして保存し、後で続きから入力できる
 - PDFには、写真をはる欄（空欄）と性別欄（記載は任意）を、必要に応じて設けられる。顔写真の画像は扱わない。アカウント登録は不要
 
@@ -85,7 +86,7 @@ npm run build   # 本番用にビルド（packages/web/dist、packages/api/dist�
 | パッケージ | 内容 |
 |---|---|
 | `packages/schema` | 履歴書JSONのスキーマと入力チェック（ブラウザとAPIで共用） |
-| `packages/core` | CSV変換、表示用の整形、年齢計算（ブラウザで動作） |
+| `packages/core` | CSV変換（3ファイル・ZIP）、表示用の整形、年齢計算（ブラウザで動作） |
 | `packages/pdf` | 履歴書PDFの作成（PDFKit）。ブラウザと Lambda の両方で使う。履歴書JSONをPDFに添付する |
 | `packages/web` | 入力フォーム、確認・完了画面、PDF取り込み画面（Vite + React） |
 | `packages/api` | PDF生成API（AWS Lambda）。AWS 構成のときだけ使う |
