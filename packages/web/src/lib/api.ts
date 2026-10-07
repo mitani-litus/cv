@@ -1,19 +1,19 @@
 import type { Resume } from '@cv/schema';
 
 export class PdfRequestError extends Error {
-  constructor(readonly kind: 'invalid' | 'busy' | 'failed') {
+  constructor(readonly kind: 'invalid' | 'busy' | 'failed' | 'font') {
     super(kind);
   }
 }
 
 /**
- * PDFの作成をAPIに依頼する。サーバーに履歴書データを送るのはこの処理だけ。
+ * PDFの作成をAPIに依頼する（VITE_PDF_API を設定した構成だけ）。サーバーに履歴書データを送るのはこの処理だけ。
  * Cookie などの認証情報は送らない。
  */
-export async function requestPdf(resume: Resume, signal?: AbortSignal): Promise<Blob> {
+export async function requestPdf(url: string, resume: Resume, signal?: AbortSignal): Promise<Blob> {
   let res: Response;
   try {
-    res = await fetch('/api/pdf', {
+    res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(resume),
