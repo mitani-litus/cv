@@ -1,0 +1,14 @@
+{
+  "name": "@cv/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "履歴書JSONの変換（CSV、表示用の整形、年齢計算）。ブラウザで動作する",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@cv/schema": "*"
+  }
+}
