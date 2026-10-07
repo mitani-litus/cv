@@ -162,6 +162,38 @@ describe('入力フォーム', () => {
     expect(screen.getByRole('button', { name: 'CSVをダウンロード' })).toBeTruthy();
   });
 
+  it('写真欄・性別欄を選べる。性別欄をやめると入力した性別も消える', async () => {
+    vi.mocked(createPdf).mockResolvedValue(new Blob(['%PDF-1.7'], { type: 'application/pdf' }));
+    const user = start();
+    const photo = screen.getByLabelText('写真をはる欄を設ける') as HTMLInputElement;
+    const gender = screen.getByLabelText('性別欄を設ける') as HTMLInputElement;
+    // 初期値は、写真欄あり・性別欄なし
+    expect(photo.checked).toBe(true);
+    expect(gender.checked).toBe(false);
+    expect(screen.queryByRole('textbox', { name: /^性別/ })).toBeNull();
+
+    await user.click(gender);
+    await user.type(screen.getByRole('textbox', { name: /^性別/ }), '女');
+    await user.click(gender);
+    expect(screen.queryByRole('textbox', { name: /^性別/ })).toBeNull();
+    await user.click(gender);
+    expect((screen.getByRole('textbox', { name: /^性別/ }) as HTMLInputElement).value).toBe('');
+    await user.type(screen.getByRole('textbox', { name: /^性別/ }), '女');
+    await user.click(photo);
+
+    await fillBasic(user);
+    for (let i = 0; i < 5; i++) await user.click(next());
+    const review = within(screen.getByRole('region', { name: '基本情報' }));
+    expect(review.getByText('性別').nextElementSibling?.textContent).toBe('女');
+    expect(review.getByText('写真をはる欄').nextElementSibling?.textContent).toBe('設けない');
+
+    await user.click(screen.getByRole('button', { name: '履歴書を作成する' }));
+    await screen.findByRole('heading', { level: 1, name: '履歴書を作成しました' });
+    const sent = vi.mocked(createPdf).mock.calls[0]![0];
+    expect(sent.layout).toEqual({ photoBox: false, genderField: true });
+    expect(sent.personal.gender).toBe('女');
+  });
+
   it('PDFの作成に失敗したら、入力内容を残したままエラーを表示する', async () => {
     vi.mocked(createPdf).mockRejectedValue(new PdfRequestError('font'));
     const user = start();

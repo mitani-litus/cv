@@ -93,9 +93,12 @@ export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
         <dl className="app-dl">
           <Row label="氏名" value={p.nameKana ? `${p.name}（${p.nameKana}）` : p.name} />
           <Row label="生年月日" value={birth} />
+          {resume.layout.genderField && <Row label="性別" value={p.gender} />}
           <Row label="住所" value={address} />
           <Row label="電話番号" value={p.phone} />
           <Row label="メールアドレス" value={p.email} />
+          <Row label="写真をはる欄" value={resume.layout.photoBox ? '設ける（空欄）' : '設けない'} />
+          <Row label="性別欄" value={resume.layout.genderField ? '設ける' : '設けない'} />
         </dl>
       </Section>
 

@@ -7,6 +7,7 @@ import {
   formatAddress,
   formatDateJa,
   isCurrentlyEmployed,
+  outputGender,
 } from '@cv/core';
 import type { Resume } from '@cv/schema';
 import { create as openFont } from 'fontkit';
@@ -33,8 +34,9 @@ export const EMBEDDED_JSON_NAME = 'resume.json';
  *             志望動機、自己PR、本人希望記入欄
  * 枠の大きさは入力内容によらず同じ。文章は枠に収まるよう文字を小さくする。
  * 行や文章が収まらない場合だけ、3ページ目以降に「別紙」として続きを記載する。
- * 一般的な日本の履歴書（厚生労働省の履歴書様式例など）を参考にしているが、
- * 仕様により顔写真欄・性別欄は設けない。
+ * 一般的な日本の履歴書（厚生労働省の履歴書様式例など）を参考にしている。
+ * 写真欄（空欄。写真は印刷後にはる）と性別欄（記載は任意）は、利用者が選んだときだけ設ける。
+ * 写真そのものは扱わない（PDFに埋め込まない）。
  */
 
 // 座標は左上が原点で、下向きに y が増える（pt）
@@ -65,6 +67,33 @@ const COL_YEAR = 46;
 const COL_MONTH = 30;
 const ROW_H = 24;
 const HEAD_H = 20;
+
+/** 1mm（pt） */
+const MM = 72 / 25.4;
+/** 写真をはる欄（縦40mm×横30mm） */
+const PHOTO_W = 30 * MM;
+const PHOTO_H = 40 * MM;
+const PHOTO_GAP = 10;
+const PHOTO_SIZE = 6.5;
+const PHOTO_TEXT = [
+  '写真をはる位置',
+  '',
+  '写真をはる必要が',
+  'ある場合',
+  '1. 縦 36〜40mm',
+  '   横 24〜30mm',
+  '2. 本人単身胸から上',
+  '3. 裏面のりづけ',
+];
+/** 性別欄（生年月日の行の右側） */
+const GENDER_LABEL_W = 34;
+const GENDER_VALUE_W = 64;
+const GENDER_NOTE = '※性別欄：記載は任意です。未記載とすることも可能です。';
+
+/** 基本情報の各行の高さ */
+const KANA_H = 22;
+const NAME_H = 48;
+const BIRTH_H = 26;
 
 const ROWS_PAGE1 = 21;
 const ROWS_PAGE2 = 5;
@@ -166,23 +195,62 @@ function drawLines(w: Writer, lines: string[], x: number, top: number, size: num
   }
 }
 
-/** ラベル列つきの1行（基本情報） */
-function labeledRow(w: Writer, label: string, h: number, draw: (x: number, width: number, top: number) => void) {
+/** ラベル列つきの1行（基本情報）。rowW は行全体の幅 */
+function labeledRow(w: Writer, label: string, h: number, draw: (x: number, width: number, top: number) => void, rowW = CONTENT_W) {
   const top = w.y;
-  w.rect(MARGIN_X, top, CONTENT_W, h);
+  w.rect(MARGIN_X, top, rowW, h);
   w.rect(MARGIN_X, top, LABEL_W, h, HEAD_BG);
   w.textInBand(label, MARGIN_X + PAD, top, h, LABEL_SIZE, LABEL);
-  draw(MARGIN_X + LABEL_W + PAD, CONTENT_W - LABEL_W - PAD * 2, top);
+  draw(MARGIN_X + LABEL_W + PAD, rowW - LABEL_W - PAD * 2, top);
   w.y += h;
 }
 
+/** 写真をはる欄（空欄）。案内の文字だけを描く */
+function photoBox(w: Writer, x: number, top: number) {
+  w.rect(x, top, PHOTO_W, PHOTO_H);
+  const lines = PHOTO_TEXT.flatMap((t) => (t === '' ? [''] : wrapText(w.measure(PHOTO_SIZE), t, PHOTO_W - PAD * 2)));
+  const blockH = lines.length * PHOTO_SIZE * LEADING;
+  let y = top + (PHOTO_H - blockH) / 2;
+  lines.forEach((line, i) => {
+    // 1行目（写真をはる位置）だけ中央に、案内は左にそろえる
+    if (i === 0) w.centered(line, x, PHOTO_W, y, PHOTO_SIZE * LEADING, PHOTO_SIZE, LABEL);
+    else w.textInBand(line, x + PAD, y, PHOTO_SIZE * LEADING, PHOTO_SIZE, LABEL);
+    y += PHOTO_SIZE * LEADING;
+  });
+}
+
+/** 基本情報のうち、写真欄の左に並ぶ部分（フリガナ・氏名・生年月日）の高さ */
+const NAME_BLOCK_H = KANA_H + NAME_H + BIRTH_H;
+
 function personalBlock(w: Writer, resume: Resume) {
   const p = resume.personal;
-  labeledRow(w, 'フリガナ', 22, (x, width, top) => w.textInBand(p.nameKana, x, top, 22, fitSize(w, p.nameKana, width, 9)));
-  labeledRow(w, '氏名', 48, (x, width, top) => w.textInBand(p.name, x, top, 48, fitSize(w, p.name, width, 20, 10)));
+  const { photoBox: withPhoto, genderField: withGender } = resume.layout;
+  // 写真欄を設けるときは、フリガナ・氏名・生年月日の行を写真欄の左に収める
+  const rowW = withPhoto ? CONTENT_W - PHOTO_W - PHOTO_GAP : CONTENT_W;
+  if (withPhoto) photoBox(w, MARGIN_X + CONTENT_W - PHOTO_W, w.y + NAME_BLOCK_H - PHOTO_H);
+
+  labeledRow(w, 'フリガナ', KANA_H, (x, width, top) => w.textInBand(p.nameKana, x, top, KANA_H, fitSize(w, p.nameKana, width, 9)), rowW);
+  labeledRow(w, '氏名', NAME_H, (x, width, top) => w.textInBand(p.name, x, top, NAME_H, fitSize(w, p.name, width, 20, 10)), rowW);
   const age = calcAge(p.birthDate, resume.createdAt);
   const birth = p.birthDate === '' ? '' : `${formatDateJa(p.birthDate)}生${age === null ? '' : `（満${age}歳）`}`;
-  labeledRow(w, '生年月日', 26, (x, _width, top) => w.textInBand(birth, x, top, 26));
+  const genderW = withGender ? GENDER_LABEL_W + GENDER_VALUE_W : 0;
+  labeledRow(
+    w,
+    '生年月日',
+    BIRTH_H,
+    (x, width, top) => {
+      w.textInBand(birth, x, top, BIRTH_H, fitSize(w, birth, width - genderW, BODY));
+      if (!withGender) return;
+      // 性別欄（記載は任意。空欄のままでもよい）
+      const gx = MARGIN_X + rowW - genderW;
+      const gender = outputGender(resume);
+      w.vline(gx, top, BIRTH_H);
+      w.rect(gx, top, GENDER_LABEL_W, BIRTH_H, HEAD_BG);
+      w.centered('性別', gx, GENDER_LABEL_W, top, BIRTH_H, LABEL_SIZE, LABEL);
+      w.centered(gender, gx + GENDER_LABEL_W, GENDER_VALUE_W, top, BIRTH_H, fitSize(w, gender, GENDER_VALUE_W - PAD * 2, BODY, 6));
+    },
+    rowW,
+  );
   const address = [p.postalCode === '' ? '' : `〒${p.postalCode}`, formatAddress(p.address)].filter((s) => s !== '').join('\n');
   labeledRow(w, '現住所', 56, (x, width, top) => {
     const fit = fitText(w, address, width, 56 - PAD * 2) ?? { size: MIN_SIZE, lines: wrapText(w.measure(MIN_SIZE), address, width).slice(0, 4) };
@@ -207,6 +275,11 @@ function personalBlock(w: Writer, resume: Resume) {
     w.textInBand(value, x + LABEL_W + PAD, top, h, fitSize(w, value, colW - LABEL_W - PAD * 2, BODY, 6));
   });
   w.y += h;
+
+  if (withGender) {
+    const size = 7;
+    w.text(GENDER_NOTE, MARGIN_X + CONTENT_W - w.measure(size)(GENDER_NOTE), w.y + 3, { size, color: LABEL });
+  }
 }
 
 /** 学歴・職歴などを、表の行（1行の高さは固定）に並べる。長い本文は次の行に続ける */
@@ -366,7 +439,9 @@ export async function renderResumePdf(resume: Resume, fonts: PdfFonts, now = new
   // ---------- 1ページ目 ----------
   w.text('履 歴 書', MARGIN_X, w.y, { size: 20, font: 'bold' });
   const dateText = `${formatDateJa(resume.createdAt)}現在`;
-  w.text(dateText, MARGIN_X + CONTENT_W - w.measure(BODY)(dateText), w.y + 10);
+  // 写真欄を設けるときは、日付を写真欄の左に置く
+  const dateRight = MARGIN_X + CONTENT_W - (resume.layout.photoBox ? PHOTO_W + PHOTO_GAP : 0);
+  w.text(dateText, dateRight - w.measure(BODY)(dateText), w.y + 10);
   w.y += 38;
   personalBlock(w, resume);
   w.y += 16;

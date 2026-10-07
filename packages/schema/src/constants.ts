@@ -1,6 +1,13 @@
 /** 履歴書JSONのバージョン。形式を変えたときに上げる。 */
 export const RESUME_VERSION = '1.0';
 
+/**
+ * PDFの様式の既定値。
+ * - photoBox: 写真をはる欄（空欄）を設ける。写真そのものは扱わない
+ * - genderField: 性別欄を設ける（記載は任意）
+ */
+export const DEFAULT_LAYOUT = { photoBox: true, genderField: false } as const;
+
 /** 文字数・件数の上限。APIでも同じ値でチェックする。 */
 export const LIMITS = {
   name: 50,
@@ -10,6 +17,7 @@ export const LIMITS = {
   building: 100,
   email: 254,
   phone: 20,
+  gender: 20,
   entryText: 100,
   note: 200,
   motivation: 400,

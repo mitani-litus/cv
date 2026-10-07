@@ -13,8 +13,11 @@ let fontCache: Promise<Uint8Array> | undefined;
 async function fetchFont(): Promise<Uint8Array> {
   if (typeof DecompressionStream !== 'undefined') {
     const res = await fetch(`${FONT_URL}.gz`, { credentials: 'omit' });
-    if (res.ok && res.body) {
-      const stream = res.body.pipeThrough(new DecompressionStream('gzip'));
+    if (res.ok) {
+      const data = new Uint8Array(await res.arrayBuffer());
+      // 配信元が Content-Encoding: gzip を付けると、ブラウザが展開済みのものを受け取る（vite preview など）
+      if (data[0] !== 0x1f || data[1] !== 0x8b) return data;
+      const stream = new Response(data).body!.pipeThrough(new DecompressionStream('gzip'));
       return new Uint8Array(await new Response(stream).arrayBuffer());
     }
   }

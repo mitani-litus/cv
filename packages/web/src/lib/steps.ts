@@ -16,6 +16,7 @@ export function stepOfPath(path: string): StepId {
   const head = path.split('.')[0] ?? '';
   switch (head) {
     case 'personal':
+    case 'layout':
       return 'basic';
     case 'education':
     case 'employment':

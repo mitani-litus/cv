@@ -35,6 +35,10 @@ function oneOf<T extends string>(v: unknown, options: readonly T[]): T | '' {
   return typeof v === 'string' && (options as readonly string[]).includes(v) ? (v as T) : '';
 }
 
+function bool(v: unknown, fallback: boolean): boolean {
+  return typeof v === 'boolean' ? v : fallback;
+}
+
 function list(v: unknown): Obj[] {
   return Array.isArray(v) ? v.slice(0, LIMITS.entries).map(obj) : [];
 }
@@ -48,13 +52,19 @@ export function coerceDraft(input: unknown, fallbackCreatedAt: string): Resume {
   const root = obj(input);
   const p = obj(root.personal);
   const a = obj(p.address);
+  const layout = obj(root.layout);
   const base = createEmptyResume(str(root.createdAt) || fallbackCreatedAt);
   return {
     ...base,
+    layout: {
+      photoBox: bool(layout.photoBox, base.layout.photoBox),
+      genderField: bool(layout.genderField, base.layout.genderField),
+    },
     personal: {
       name: str(p.name),
       nameKana: str(p.nameKana),
       birthDate: str(p.birthDate),
+      gender: str(p.gender),
       postalCode: str(p.postalCode),
       address: {
         prefecture: oneOf(a.prefecture, PREFECTURES),
@@ -107,8 +117,8 @@ export async function readDraftFile(file: File, fallbackCreatedAt: string): Prom
   }
 }
 
-/** 何か入力されているか（ページを離れるときの確認に使う） */
+/** 何か入力されているか（ページを離れるときの確認に使う）。様式の選択だけなら入力とみなさない */
 export function hasInput(resume: Resume): boolean {
   const empty = createEmptyResume(resume.createdAt);
-  return JSON.stringify(resume) !== JSON.stringify(empty);
+  return JSON.stringify({ ...resume, layout: empty.layout }) !== JSON.stringify(empty);
 }
