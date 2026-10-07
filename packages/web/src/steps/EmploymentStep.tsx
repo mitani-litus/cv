@@ -1,6 +1,7 @@
 import { createEmptyEmployment, EMPLOYMENT_CATEGORIES, LIMITS, type EmploymentEntry } from '@cv/schema';
 import { Entries } from '../components/Entries';
 import { SelectField, TextField, YearMonthField } from '../components/Field';
+import { setEmploymentCategory, setEmploymentCompany } from '../lib/pairing';
 
 export function EmploymentStep({ value, onChange }: { value: EmploymentEntry[]; onChange: (value: EmploymentEntry[]) => void }) {
   return (
@@ -9,14 +10,14 @@ export function EmploymentStep({ value, onChange }: { value: EmploymentEntry[]; 
       items={value}
       onChange={onChange}
       createEmpty={createEmptyEmployment}
-      hint="現在も在籍している場合は、入社の行だけで構いません。職歴がない場合は、何も入力せずに次へ進めます。"
+      hint="区分で「入社」を選ぶと、「退職」の行を自動で追加します。現在も在職中の場合は退職の行を削除してください（履歴書には「現在に至る」と記載されます）。"
       renderItem={(item, i, update) => (
         <>
           <div className="app-inline" style={{ gap: '8px 24px', alignItems: 'flex-start' }}>
             <YearMonthField path={`employment.${i}`} legend="年月" name={`職歴 ${i + 1}`} year={item.year} month={item.month} onChange={(year, month) => update({ year, month })} />
-            <SelectField path={`employment.${i}.category`} label="区分" options={EMPLOYMENT_CATEGORIES} value={item.category} onChange={(category) => update({ category })} />
+            <SelectField path={`employment.${i}.category`} label="区分" options={EMPLOYMENT_CATEGORIES} value={item.category} onChange={(category) => onChange(setEmploymentCategory(value, i, category))} />
           </div>
-          <TextField path={`employment.${i}.company`} label="会社名" maxLength={LIMITS.entryText} value={item.company} onChange={(company) => update({ company })} />
+          <TextField path={`employment.${i}.company`} label="会社名" maxLength={LIMITS.entryText} value={item.company} onChange={(company) => onChange(setEmploymentCompany(value, i, company))} />
           <div className="app-row">
             <TextField path={`employment.${i}.department`} label="部署" optional maxLength={LIMITS.entryText} value={item.department} onChange={(department) => update({ department })} />
             <TextField path={`employment.${i}.position`} label="役職" optional maxLength={LIMITS.entryText} value={item.position} onChange={(position) => update({ position })} />

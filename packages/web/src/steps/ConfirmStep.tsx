@@ -1,5 +1,7 @@
 import {
   calcAge,
+  CURRENTLY_EMPLOYED_TEXT,
+  isCurrentlyEmployed,
   describeEducation,
   describeEmployment,
   describeQualification,
@@ -101,7 +103,12 @@ export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
       </Section>
 
       <Section title="職歴" step="employment" onEdit={onEdit}>
-        <History items={resume.employment.map((e) => ({ date: formatYearMonthJa(e.year, e.month), text: describeEmployment(e) }))} />
+        <History
+          items={[
+            ...resume.employment.map((e) => ({ date: formatYearMonthJa(e.year, e.month), text: describeEmployment(e) })),
+            ...(isCurrentlyEmployed(resume.employment) ? [{ date: '', text: CURRENTLY_EMPLOYED_TEXT }] : []),
+          ]}
+        />
       </Section>
 
       <Section title="資格・免許" step="qualifications" onEdit={onEdit}>
