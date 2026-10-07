@@ -138,6 +138,7 @@ describe('escapeCsvCell', () => {
   it.each([
     ['=1+1', "'=1+1"],
     ['+81-90-1234-5678', "'+81-90-1234-5678"],
+    ['+SUM(1,2)', `"'+SUM(1,2)"`],
     ['-2', "'-2"],
     ['@SUM(A1)', "'@SUM(A1)"],
     ['\tcmd', "'\tcmd"],
@@ -227,6 +228,29 @@ describe('toCsv', () => {
     expect(row[CSV_HEADERS.indexOf('志望動機')]).toBe("'+SUM(1,2)");
     // 学歴は年月で始まるため数式にならない
     expect(row[CSV_HEADERS.indexOf('学歴')]!.startsWith('2001/04 =1+1')).toBe(true);
+  });
+
+  it('電話番号の列では + で始まる国際形式をそのまま出力する', () => {
+    const r = sampleResume();
+    r.personal.phone = '+81-90-1234-5678';
+    const row = parseCsv(toCsv(r))[1]!;
+    expect(row[CSV_HEADERS.indexOf('電話番号')]).toBe('+81-90-1234-5678');
+  });
+
+  it('電話番号の列でも、電話番号の形でない値は無害化する', () => {
+    expect(escapeCsvCell('+81(3)1234-5678', { allowLeadingPlus: true })).toBe('+81(3)1234-5678');
+    expect(escapeCsvCell('+SUM(1,2)', { allowLeadingPlus: true })).toBe(`"'+SUM(1,2)"`);
+    expect(escapeCsvCell('=1+1', { allowLeadingPlus: true })).toBe("'=1+1");
+    expect(escapeCsvCell('-1', { allowLeadingPlus: true })).toBe("'-1");
+  });
+
+  it('電話番号以外の列では + で始まる値を無害化する', () => {
+    const r = sampleResume();
+    r.personal.postalCode = '+81';
+    r.preferences = '+81-90-1234-5678';
+    const row = parseCsv(toCsv(r))[1]!;
+    expect(row[CSV_HEADERS.indexOf('郵便番号')]).toBe("'+81");
+    expect(row[CSV_HEADERS.indexOf('本人希望')]).toBe("'+81-90-1234-5678");
   });
 
   it('複数の履歴書を1ファイルにできる', () => {
