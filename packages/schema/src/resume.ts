@@ -72,17 +72,21 @@ const yearMonth = z
 
 type YearMonth = z.infer<typeof yearMonth>;
 
-/** 年月の順序を比べるための値（年がなければ null。月がなければ年の始まりとみなす） */
-function yearMonthKey(ym: YearMonth): number | null {
-  return ym.year === null ? null : ym.year * 12 + (ym.month ?? 1);
+/**
+ * 終わりの年月が始まりより前か。
+ * 月が空の年月は「その年のどこか」なので、同じ年の中では前後を決めない（前とみなさない）。
+ * 年が空ならどちらも比べない。
+ */
+function isEndBeforeStart(start: YearMonth, end: YearMonth): boolean {
+  if (start.year === null || end.year === null) return false;
+  if (end.year !== start.year) return end.year < start.year;
+  return start.month !== null && end.month !== null && end.month < start.month;
 }
 
 /** 終わりの年月が始まりより前なら拒否する */
 function requireEndAfterStart(message: string) {
   return (value: { start: YearMonth; end: YearMonth }, ctx: z.RefinementCtx) => {
-    const start = yearMonthKey(value.start);
-    const end = yearMonthKey(value.end);
-    if (start !== null && end !== null && end < start) {
+    if (isEndBeforeStart(value.start, value.end)) {
       ctx.addIssue({ code: 'custom', path: ['end', 'year'], message });
     }
   };

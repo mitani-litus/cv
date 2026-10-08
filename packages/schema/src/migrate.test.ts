@@ -89,6 +89,15 @@ describe('migrateResume（1.0 → 2.0）', () => {
     expect(m.layout).toEqual({ photoBox: true, genderField: false });
   });
 
+  it('入学に月があり卒業に月がない同じ年の行も、まとめた後に入力チェックを通る', () => {
+    const input = v1();
+    input.education = [
+      { year: 2004, month: 4, category: '入学', school: '○○学校', department: '', note: '' },
+      { year: 2004, month: null, category: '卒業', school: '○○学校', department: '', note: '' },
+    ];
+    expect(validateResume(input).ok).toBe(true);
+  });
+
   it('1.0 以外はそのまま返す', () => {
     const input = { version: '2.0', foo: 1 };
     expect(migrateResume(input)).toBe(input);

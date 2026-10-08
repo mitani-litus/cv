@@ -204,6 +204,25 @@ describe('validateResume', () => {
       expect(validateResume(r).ok).toBe(true);
     });
 
+    it.each([
+      // [始まり, 終わり, エラーになるか]
+      [[2004, 4], [2004, null], false],
+      [[2004, null], [2004, 3], false],
+      [[2004, null], [2004, null], false],
+      [[2004, 4], [2004, 4], false],
+      [[2004, 4], [2004, 3], true],
+      [[2004, 4], [2003, null], true],
+      [[2004, null], [2003, 12], true],
+      [[null, null], [2003, 12], false],
+    ] as const)('始まり %j・終わり %j → エラー %s（月が空なら同じ年の中では前後を決めない）', (start, end, isError) => {
+      const r = validResume();
+      r.employment[0] = { ...r.employment[0]!, start: { year: start[0], month: start[1] }, end: { year: end[0], month: end[1] } };
+      r.education[0] = { ...r.education[0]!, start: { year: start[0], month: start[1] }, end: { year: end[0], month: end[1] } };
+      const paths = errorPaths(r);
+      expect(paths.includes('employment.0.end.year')).toBe(isError);
+      expect(paths.includes('education.0.end.year')).toBe(isError);
+    });
+
     it('学歴の区分は選択肢以外を拒否する', () => {
       const r = validResume() as unknown as { education: { status: string }[] };
       r.education[0]!.status = '入学';
