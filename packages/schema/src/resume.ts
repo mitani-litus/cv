@@ -131,16 +131,20 @@ const qualificationEntry = z
   });
 
 function kana(max: number, label: string) {
-  return required(line(max), `${label}を入力してください。`).refine((v) => v.trim() === '' || KATAKANA.test(v), {
+  return line(max).refine((v) => v.trim() === '' || KATAKANA.test(v), {
     error: `${label}はカタカナで入力してください。`,
   });
 }
 
 const personal = z.strictObject({
-  familyName: required(line(LIMITS.familyName), '姓を入力してください。'),
+  // 名は必須。姓とミドルネームは任意（姓のない方、名が1つだけの方もいるため）
+  familyName: line(LIMITS.familyName),
   givenName: required(line(LIMITS.givenName), '名を入力してください。'),
+  // ミドルネームは後から追加した項目なので、ない場合は空にする
+  middleName: line(LIMITS.middleName).default(''),
   familyNameKana: kana(LIMITS.familyNameKana, '姓のフリガナ'),
-  givenNameKana: kana(LIMITS.givenNameKana, '名のフリガナ'),
+  givenNameKana: required(kana(LIMITS.givenNameKana, '名のフリガナ'), '名のフリガナを入力してください。'),
+  middleNameKana: kana(LIMITS.middleNameKana, 'ミドルネームのフリガナ').default(''),
   birthDate: z.string().refine((v) => v === '' || isValidIsoDate(v), {
     error: '生年月日は正しい日付で入力してください。',
   }),

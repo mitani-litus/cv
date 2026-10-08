@@ -43,13 +43,17 @@ describe('migrateResume（1.0 → 2.0）', () => {
     expect(result.ok).toBe(true);
   });
 
-  it('氏名を最初の空白で姓と名に分ける（空白がなければすべて姓）', () => {
+  it('氏名を最初の空白で姓と名に分ける（空白がなければすべて名にし、入力チェックを通る）', () => {
     const m = migrateResume(v1()) as { personal: Record<string, unknown> };
-    expect(m.personal).toMatchObject({ familyName: '箕谷', givenName: '祐也', familyNameKana: 'ミタニ', givenNameKana: 'ユウヤ' });
+    expect(m.personal).toMatchObject({ familyName: '箕谷', givenName: '祐也', middleName: '', familyNameKana: 'ミタニ', givenNameKana: 'ユウヤ', middleNameKana: '' });
     expect(m.personal).not.toHaveProperty('name');
     const single = v1();
     single.personal.name = '箕谷祐也';
-    expect(migrateResume(single)).toMatchObject({ personal: { familyName: '箕谷祐也', givenName: '' } });
+    single.personal.nameKana = 'ミタニユウヤ';
+    expect(migrateResume(single)).toMatchObject({
+      personal: { familyName: '', givenName: '箕谷祐也', familyNameKana: '', givenNameKana: 'ミタニユウヤ' },
+    });
+    expect(validateResume(single).ok).toBe(true);
   });
 
   it('入学と卒業・修了・中途退学の行を1件にまとめ、対にならない行はそのまま1件にする', () => {

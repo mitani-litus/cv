@@ -17,6 +17,7 @@ export {
   formatAddress,
   formatDateJa,
   formatName,
+  formatNameKana,
   formatYearMonthIso,
   formatYearMonthJa,
   outputGender,

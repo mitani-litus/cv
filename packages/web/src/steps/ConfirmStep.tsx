@@ -7,6 +7,7 @@ import {
   formatAddress,
   formatDateJa,
   formatName,
+  formatNameKana,
   formatYearMonthJa,
   isCurrentlyEmployed,
   type HistoryLine,
@@ -97,8 +98,8 @@ export function ConfirmStep({ resume, onChangeCreatedAt, onEdit }: Props) {
 
       <Section title="基本情報" step="basic" onEdit={onEdit}>
         <dl className="app-dl">
-          <Row label="氏名" value={formatName(p.familyName, p.givenName)} />
-          <Row label="フリガナ" value={formatName(p.familyNameKana, p.givenNameKana)} />
+          <Row label="氏名" value={formatName(p)} />
+          <Row label="フリガナ" value={formatNameKana(p)} />
           <Row label="生年月日" value={birth} />
           {resume.layout.genderField && <Row label="性別" value={p.gender} />}
           <Row label="住所" value={address} />

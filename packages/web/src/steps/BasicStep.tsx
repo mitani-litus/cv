@@ -37,32 +37,60 @@ export function BasicStep({ value: { personal: value, layout }, onChange }: { va
         />
       </fieldset>
 
-      <div className="app-row">
-        <TextField path="personal.familyName" label="姓" required autoComplete="family-name" maxLength={LIMITS.familyName} value={value.familyName} onChange={(v) => set('familyName', v)} />
-        <TextField path="personal.givenName" label="名" required autoComplete="given-name" maxLength={LIMITS.givenName} value={value.givenName} onChange={(v) => set('givenName', v)} />
-      </div>
-      <div className="app-row">
-        <TextField
-          path="personal.familyNameKana"
-          label="セイ（フリガナ）"
-          required
-          support="カタカナで入力してください（ひらがなは自動でカタカナにします）"
-          maxLength={LIMITS.familyNameKana}
-          value={value.familyNameKana}
-          onChange={(v) => set('familyNameKana', v)}
-          normalize={toKatakana}
-        />
-        <TextField
-          path="personal.givenNameKana"
-          label="メイ（フリガナ）"
-          required
-          support="カタカナで入力してください"
-          maxLength={LIMITS.givenNameKana}
-          value={value.givenNameKana}
-          onChange={(v) => set('givenNameKana', v)}
-          normalize={toKatakana}
-        />
-      </div>
+      <fieldset className="app-fieldset">
+        <legend>氏名</legend>
+        <p className="bb-field__support" style={{ margin: 0 }}>
+          在留カードなどと同じく「姓・名・ミドルネーム」に分けて入力してください。姓のない方は、名だけを入力してください。フリガナのひらがなは、自動でカタカナにします。
+        </p>
+        <div className="app-row">
+          <TextField path="personal.familyName" label="姓" optional autoComplete="family-name" maxLength={LIMITS.familyName} value={value.familyName} onChange={(v) => set('familyName', v)} />
+          <TextField path="personal.givenName" label="名" required autoComplete="given-name" maxLength={LIMITS.givenName} value={value.givenName} onChange={(v) => set('givenName', v)} />
+        </div>
+        <div className="app-row">
+          <TextField
+            path="personal.familyNameKana"
+            label="セイ（フリガナ）"
+            optional
+            support="カタカナで入力してください"
+            maxLength={LIMITS.familyNameKana}
+            value={value.familyNameKana}
+            onChange={(v) => set('familyNameKana', v)}
+            normalize={toKatakana}
+          />
+          <TextField
+            path="personal.givenNameKana"
+            label="メイ（フリガナ）"
+            required
+            support="カタカナで入力してください"
+            maxLength={LIMITS.givenNameKana}
+            value={value.givenNameKana}
+            onChange={(v) => set('givenNameKana', v)}
+            normalize={toKatakana}
+          />
+        </div>
+        <div className="app-row">
+          <TextField
+            path="personal.middleName"
+            label="ミドルネーム"
+            optional
+            support="ない場合は空欄のままにしてください"
+            autoComplete="additional-name"
+            maxLength={LIMITS.middleName}
+            value={value.middleName}
+            onChange={(v) => set('middleName', v)}
+          />
+          <TextField
+            path="personal.middleNameKana"
+            label="ミドルネーム（フリガナ）"
+            optional
+            support="カタカナで入力してください"
+            maxLength={LIMITS.middleNameKana}
+            value={value.middleNameKana}
+            onChange={(v) => set('middleNameKana', v)}
+            normalize={toKatakana}
+          />
+        </div>
+      </fieldset>
 
       <DateField
         path="personal.birthDate"

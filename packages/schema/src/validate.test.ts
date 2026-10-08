@@ -17,6 +17,8 @@ function validResume(): Resume {
     givenName: '太郎',
     familyNameKana: 'ヤマダ',
     givenNameKana: 'タロウ',
+    middleName: '',
+    middleNameKana: '',
     birthDate: '1985-04-01',
     gender: '',
     postalCode: '100-0001',
@@ -59,35 +61,52 @@ describe('validateResume', () => {
   });
 
   describe('必須チェック', () => {
-    it('姓・名・フリガナ・電話番号・メールアドレスが空ならエラー', () => {
+    it('名・名のフリガナ・電話番号・メールアドレスが空ならエラー', () => {
       const r = createEmptyResume('2026-10-07');
-      expect(errorPaths(r)).toEqual(
-        expect.arrayContaining([
-          'personal.familyName',
-          'personal.givenName',
-          'personal.familyNameKana',
-          'personal.givenNameKana',
-          'personal.phone',
-          'personal.email',
-        ]),
-      );
-      expect(messageFor(r, 'personal.familyName')).toBe('姓を入力してください。');
+      expect(errorPaths(r).sort()).toEqual(['personal.email', 'personal.givenName', 'personal.givenNameKana', 'personal.phone']);
+      expect(messageFor(r, 'personal.givenName')).toBe('名を入力してください。');
       expect(messageFor(r, 'personal.givenNameKana')).toBe('名のフリガナを入力してください。');
     });
 
-    it('空白だけの姓はエラー', () => {
+    it('空白だけの名はエラー', () => {
       const r = validResume();
-      r.personal.familyName = '　 ';
-      expect(errorPaths(r)).toContain('personal.familyName');
+      r.personal.givenName = '　 ';
+      expect(errorPaths(r)).toContain('personal.givenName');
+    });
+
+    it('姓とミドルネームは任意。名だけでもよい', () => {
+      const r = validResume();
+      r.personal = { ...r.personal, familyName: '', familyNameKana: '', givenName: 'Sukarno', givenNameKana: 'スカルノ' };
+      expect(validateResume(r).ok).toBe(true);
+    });
+
+    it('ミドルネームとそのフリガナを受け付け、フリガナはカタカナだけ', () => {
+      const r = validResume();
+      r.personal = { ...r.personal, middleName: 'MICHAEL', middleNameKana: 'マイケル・ジョー' };
+      expect(validateResume(r).ok).toBe(true);
+      r.personal.middleNameKana = 'まいける';
+      expect(messageFor(r, 'personal.middleNameKana')).toBe('ミドルネームのフリガナはカタカナで入力してください。');
+      r.personal.middleNameKana = '';
+      r.personal.middleName = 'あ'.repeat(LIMITS.middleName + 1);
+      expect(errorPaths(r)).toContain('personal.middleName');
+    });
+
+    it('ミドルネームがない、以前の 2.0 のJSONも受け付け、空にする', () => {
+      const r = validResume() as unknown as { personal: Record<string, unknown> };
+      delete r.personal.middleName;
+      delete r.personal.middleNameKana;
+      const result = validateResume(r);
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.personal).toMatchObject({ middleName: '', middleNameKana: '' });
     });
 
     it('1項目につきエラーは1件だけ返す', () => {
       const r = validResume();
-      r.personal.familyNameKana = '';
+      r.personal.givenNameKana = '';
       const result = validateResume(r);
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.errors.filter((e) => e.path === 'personal.familyNameKana')).toHaveLength(1);
+        expect(result.errors.filter((e) => e.path === 'personal.givenNameKana')).toHaveLength(1);
       }
     });
   });
@@ -339,14 +358,7 @@ describe('isValidIsoDate', () => {
 describe('createEmptyResume', () => {
   it('空の履歴書は必須項目のエラーだけになる', () => {
     expect(errorPaths(createEmptyResume('2026-10-07')).sort()).toEqual(
-      [
-        'personal.email',
-        'personal.familyName',
-        'personal.familyNameKana',
-        'personal.givenName',
-        'personal.givenNameKana',
-        'personal.phone',
-      ].sort(),
+      ['personal.email', 'personal.givenName', 'personal.givenNameKana', 'personal.phone'].sort(),
     );
   });
 

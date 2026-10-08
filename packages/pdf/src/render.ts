@@ -7,6 +7,7 @@ import {
   formatAddress,
   formatDateJa,
   formatName,
+  formatNameKana,
   isCurrentlyEmployed,
   outputGender,
   type HistoryLine,
@@ -231,8 +232,8 @@ function personalBlock(w: Writer, resume: Resume) {
   const rowW = withPhoto ? CONTENT_W - PHOTO_W - PHOTO_GAP : CONTENT_W;
   if (withPhoto) photoBox(w, MARGIN_X + CONTENT_W - PHOTO_W, w.y + NAME_BLOCK_H - PHOTO_H);
 
-  const nameKana = formatName(p.familyNameKana, p.givenNameKana);
-  const name = formatName(p.familyName, p.givenName);
+  const nameKana = formatNameKana(p);
+  const name = formatName(p);
   labeledRow(w, 'フリガナ', KANA_H, (x, width, top) => w.textInBand(nameKana, x, top, KANA_H, fitSize(w, nameKana, width, 9)), rowW);
   labeledRow(w, '氏名', NAME_H, (x, width, top) => w.textInBand(name, x, top, NAME_H, fitSize(w, name, width, 20, 10)), rowW);
   const age = calcAge(p.birthDate, resume.createdAt);
