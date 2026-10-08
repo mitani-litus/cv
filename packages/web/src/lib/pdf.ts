@@ -26,6 +26,27 @@ async function fetchFont(): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer());
 }
 
+let rendererCache: Promise<typeof import('@cv/pdf')> | undefined;
+
+/** PDFの作成処理（PDFKit）を読み込む。失敗したら、次は読み込み直す */
+function loadRenderer(): Promise<typeof import('@cv/pdf')> {
+  rendererCache ??= import('@cv/pdf').catch((e: unknown) => {
+    rendererCache = undefined;
+    throw e;
+  });
+  return rendererCache;
+}
+
+/**
+ * PDFの作成処理を、入力画面を開いたときに先に読み込んでおく。
+ * 作成処理のファイル名には版ごとのハッシュが付き、新しい版を公開すると古いファイルはなくなる。
+ * 「履歴書を作成する」を押すまで読み込まないと、入力中に公開された場合に読み込めなくなるため。
+ * フォントは大きく、ファイル名も版によらないため、ここでは読み込まない。
+ */
+export function preloadPdfRenderer(): void {
+  if (PDF_API === '') loadRenderer().catch(() => undefined);
+}
+
 function loadFont(): Promise<Uint8Array> {
   fontCache ??= fetchFont()
     .catch((e: unknown) => {
@@ -43,11 +64,18 @@ function loadFont(): Promise<Uint8Array> {
 export async function createPdf(resume: Resume): Promise<Blob> {
   if (PDF_API !== '') return requestPdf(PDF_API, resume);
 
-  let font: Uint8Array;
+  // フォントは大きいため、作成するときにだけ読み込む（作成処理と並行して読み込む）
+  const fontPromise = loadFont();
+  fontPromise.catch(() => undefined);
   let render: typeof import('@cv/pdf').renderResumePdf;
   try {
-    // PDFの作成処理（PDFKit）とフォントは大きいため、作成するときにだけ読み込む
-    [font, { renderResumePdf: render }] = await Promise.all([loadFont(), import('@cv/pdf')]);
+    ({ renderResumePdf: render } = await loadRenderer());
+  } catch {
+    throw new PdfRequestError('outdated');
+  }
+  let font: Uint8Array;
+  try {
+    font = await fontPromise;
   } catch {
     throw new PdfRequestError('font');
   }

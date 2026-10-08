@@ -8,7 +8,7 @@ import { LocalNote } from '../components/LocalNote';
 import { Stepper } from '../components/Stepper';
 import { PDF_IN_BROWSER } from '../config';
 import { PdfRequestError } from '../lib/api';
-import { createPdf } from '../lib/pdf';
+import { createPdf, preloadPdfRenderer } from '../lib/pdf';
 import { hasInput } from '../lib/draft';
 import { downloadJson } from '../lib/files';
 import { errorsForStep, STEPS, type StepId } from '../lib/steps';
@@ -37,6 +37,8 @@ const PDF_ERRORS: Record<PdfRequestError['kind'], string> = {
     ? 'PDFの作成中に問題が起きました。入力内容はこの画面に残っているので、もう一度「履歴書を作成する」を押してください。'
     : '通信がうまくいかなかった可能性があります。入力内容はこの画面に残っているので、もう一度「履歴書を作成する」を押してください。',
   font: 'PDFの作成に必要なフォントを読み込めませんでした。通信の状態を確認してから、もう一度「履歴書を作成する」を押してください。入力内容はこの画面に残っています。',
+  outdated:
+    'このサービスが更新されたため、PDFを作成できませんでした。画面下の「入力データを保存（JSON）」で入力内容を保存してから、ページを再読み込みし、トップページの「保存したデータ（JSON）から再開する」で読み込んでください。',
 };
 
 interface Props {
@@ -63,6 +65,9 @@ export function FormPage({ resume, onChange }: Props) {
     const map = new Map(stepErrors.map((e) => [e.path, e.message]));
     return (path: string) => map.get(path);
   }, [stepErrors]);
+
+  // PDFの作成処理を先に読み込んでおく（入力中に新しい版が公開されても作成できるように）
+  useEffect(() => preloadPdfRenderer(), []);
 
   // 入力途中でページを閉じようとしたら確認する（データは端末内にしかないため）
   useEffect(() => {
