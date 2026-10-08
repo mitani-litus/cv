@@ -7,7 +7,7 @@ import { PdfRequestError } from './lib/api';
 import { createPdf } from './lib/pdf';
 
 // PDFの作成処理そのものは lib/pdf.test.ts と packages/pdf で確かめる
-vi.mock('./lib/pdf', () => ({ createPdf: vi.fn() }));
+vi.mock('./lib/pdf', () => ({ createPdf: vi.fn(), preloadPdfRenderer: vi.fn() }));
 
 function start(path = '/form') {
   window.history.pushState(null, '', path);

@@ -68,6 +68,38 @@ describe('createPdf（ブラウザで作る：既定）', () => {
     expect(render).not.toHaveBeenCalled();
     expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
   });
+
+  it('作成処理を読み込めない（ページを開いたまま新しい版が公開された）ときは outdated のエラーにし、次は読み込み直す', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(gzipSync(FONT))));
+    let fail = true;
+    vi.doMock('@cv/pdf', () => {
+      if (fail) throw new Error('Failed to fetch dynamically imported module');
+      return { renderResumePdf: render };
+    });
+    const { createPdf } = await import('./pdf');
+    await expect(createPdf(resume())).rejects.toMatchObject({ kind: 'outdated' });
+    fail = false;
+    vi.resetModules();
+    await expect(createPdf(resume())).resolves.toBeInstanceOf(Blob);
+    vi.doUnmock('@cv/pdf');
+  });
+
+  it('入力画面を開いたときに作成処理を先に読み込み、その後に読み込めなくなっても作成できる', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(gzipSync(FONT))));
+    let available = true;
+    vi.doMock('@cv/pdf', () => {
+      if (!available) throw new Error('404');
+      return { renderResumePdf: render };
+    });
+    const { createPdf, preloadPdfRenderer } = await import('./pdf');
+    preloadPdfRenderer();
+    await new Promise((r) => setTimeout(r, 0));
+    // 新しい版が公開され、古い作成処理のファイルがなくなった
+    available = false;
+    vi.resetModules();
+    await expect(createPdf(resume())).resolves.toBeInstanceOf(Blob);
+    vi.doUnmock('@cv/pdf');
+  });
 });
 
 describe('createPdf（サーバーで作る：VITE_PDF_API を設定した構成）', () => {

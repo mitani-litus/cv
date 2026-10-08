@@ -1,7 +1,11 @@
 import type { Resume } from '@cv/schema';
 
 export class PdfRequestError extends Error {
-  constructor(readonly kind: 'invalid' | 'busy' | 'failed' | 'font') {
+  /**
+   * outdated: サービスが更新され、PDFの作成処理（ファイル名に版ごとのハッシュが付く）を読み込めなかった。
+   * ページを開いたまま新しい版が公開されたときに起きる
+   */
+  constructor(readonly kind: 'invalid' | 'busy' | 'failed' | 'font' | 'outdated') {
     super(kind);
   }
 }
