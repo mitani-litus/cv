@@ -23,23 +23,36 @@ export function ImportPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  // 読み込み中かどうか。state の busy は画面を描き直すまで変わらないため、
+  // 続けて届いたドロップを確実に止められるよう ref でも持つ
+  const busyRef = useRef(false);
+  // 読み込みごとの番号。最新の読み込みの結果だけを画面に反映する
+  const loadId = useRef(0);
 
+  // 画面のファイル名・プレビュー・保存するCSVが、別のPDFの内容にならないよう、
+  // 読み込み中は次のファイルを受け付けない
   const load = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file || busyRef.current) return;
+    busyRef.current = true;
+    const id = ++loadId.current;
     setFileName(file.name);
     setBusy(true);
     setResult(null);
+    let next: ImportResult;
     try {
-      setResult(await importResumeFromPdf(file));
+      next = await importResumeFromPdf(file);
     } catch {
-      setResult({ ok: false, reason: 'not-pdf' });
-    } finally {
-      setBusy(false);
-      if (inputRef.current) inputRef.current.value = '';
+      next = { ok: false, reason: 'not-pdf' };
     }
+    if (id !== loadId.current) return;
+    setResult(next);
+    busyRef.current = false;
+    setBusy(false);
+    if (inputRef.current) inputRef.current.value = '';
   };
 
   const onDrop = (e: DragEvent) => {
+    // 読み込み中でも既定の動作は止める（止めないと、ブラウザがPDFをこのタブで開いてしまう）
     e.preventDefault();
     void load(e.dataTransfer.files[0]);
   };
@@ -56,7 +69,7 @@ export function ImportPage() {
             </div>
 
             <div className="app-stack" style={{ gap: 32 }}>
-              <div className="app-drop" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+              <div className="app-drop" aria-disabled={busy || undefined} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
                 <div className="app-drop__icon">
                   <Icon name="upload" className="ic--lg" />
                 </div>
