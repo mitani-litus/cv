@@ -343,6 +343,8 @@ textarea.bb-input { height: auto; min-height: 200px; width: 100%; line-height: 1
   border: 2px dashed var(--border-field); border-radius: var(--radius-16); background: var(--surface);
   padding: var(--space-40) var(--space-24); display: grid; justify-items: center; gap: var(--space-16); text-align: center;
 }
+/* 読み込み中はドロップを受け付けない */
+.app-drop[aria-disabled="true"] { border-color: var(--border-disabled); background: var(--surface-subtle); cursor: progress; }
 .app-drop__icon { width: 64px; height: 64px; border-radius: var(--radius-full); background: var(--surface-key); color: var(--key); display: grid; place-items: center; }
 .app-filechip {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-16); flex-wrap: wrap;
