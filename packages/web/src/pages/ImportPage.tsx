@@ -11,6 +11,7 @@ const FAILURES: Record<Extract<ImportResult, { ok: false }>['reason'], string> =
   'too-large': 'ファイルが大きすぎます（10MBまで）。このサービスで作成したPDFか確認してください。',
   'no-data': 'このサービスで作成したPDFか確認してください。応募者にCSVの送付を依頼する方法もあります。',
   invalid: '履歴書データの形式が正しくありません。応募者にCSVの送付を依頼してください。',
+  outdated: 'このサービスが更新されたため、読み込めませんでした。ページを再読み込みしてから、もう一度PDFを選んでください。',
 };
 
 function count(resume: Resume): string {

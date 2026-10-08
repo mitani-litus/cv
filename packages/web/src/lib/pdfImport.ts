@@ -6,7 +6,7 @@ export const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 export type ImportResult =
   | { ok: true; resume: Resume }
-  | { ok: false; reason: 'not-pdf' | 'too-large' | 'no-data' | 'invalid' };
+  | { ok: false; reason: 'not-pdf' | 'too-large' | 'no-data' | 'invalid' | 'outdated' };
 
 /**
  * このサービスで作成したPDFから、添付された履歴書JSONを取り出す。
@@ -18,10 +18,16 @@ export async function importResumeFromPdf(file: File): Promise<ImportResult> {
   // 拡張子やMIMEタイプではなく、ファイルの先頭で判定する
   if (new TextDecoder().decode(data.subarray(0, 5)) !== '%PDF-') return { ok: false, reason: 'not-pdf' };
 
-  // pdf.js は大きいため、この画面を開いたときだけ読み込む
-  const pdfjs = await import('pdfjs-dist');
-  const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  // pdf.js は大きいため、読み込むときだけ取得する。
+  // ファイル名には版ごとのハッシュが付くため、ページを開いたまま新しい版が公開されると取得できない
+  let pdfjs: typeof import('pdfjs-dist');
+  try {
+    pdfjs = await import('pdfjs-dist');
+    const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  } catch {
+    return { ok: false, reason: 'outdated' };
+  }
 
   let json: string | null = null;
   const task = pdfjs.getDocument({ data, enableXfa: false });
