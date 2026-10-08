@@ -340,7 +340,7 @@ npm run deploy                   # 画面（AWS 構成用）とAPIをビルド�
 
 ### 脆弱性の報告
 
-セキュリティ上の問題を発見した場合は、**公開の Issue には書かず**、GitHub の「Security」タブにある「Report a vulnerability」から非公開で報告してください。報告には、再現手順と影響の範囲を書いてください。実在する人の個人情報は含めないでください。
+セキュリティ上の問題を発見した場合は、**公開の Issue には書かず**、GitHub の「Security」タブにある「Report a vulnerability」から非公開で報告してください。報告に書いていただきたいことや対応の流れは、[SECURITY.md](SECURITY.md) を参照してください。
 
 ## ♿ アクセシビリティ
 
